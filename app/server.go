@@ -22,7 +22,6 @@ func main() {
 
 	for {
 		conn, err := ln.Accept()
-		ln.Accept()
 	
 		if err != nil {
 			fmt.Println("Error accepting connection", err.Error())
