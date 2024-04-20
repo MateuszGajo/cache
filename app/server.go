@@ -20,6 +20,8 @@ func main() {
 		os.Exit(1)
 	}
 
+	defer ln.Close()
+
 	for {
 		conn, err := ln.Accept()
 	
@@ -28,7 +30,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		handleConenction(conn)
+		go handleConenction(conn)
 	}
 	
 }
