@@ -37,5 +37,12 @@ func main() {
 func handleConenction(conn net.Conn) {
 	defer conn.Close();
 
+	buf := make([]byte, 1024)
+    n, err := conn.Read(buf)
+    if err != nil {
+        return
+    }
+    fmt.Println("Received data", buf[:n])
+
 	conn.Write([]byte("+PONG\r\n"))	
 }
