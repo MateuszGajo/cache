@@ -78,7 +78,7 @@ func handleConenction(conn net.Conn) {
 		if err != nil {
 			return
 		}
-		input :=string(buf[:n-1])
+		input :=string(buf[:n])
 		var args []string;
 		fmt.Print(input)
 		fmt.Println(input[0])
