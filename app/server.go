@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	// Uncomment this block to pass the first stage
 	"net"
@@ -14,7 +15,7 @@ func main() {
 	fmt.Println("Logs from your program will appear here!")
 
 	// Uncomment this block to pass the first stage
-	ln, err := net.Listen("tcp", ":6379")
+	ln, err := net.Listen("tcp", "127.0.0.1:6379")
 	if err != nil {
 		fmt.Println("Failed to run on port 6379")
 		os.Exit(1)
@@ -35,6 +36,32 @@ func main() {
 	
 }
 
+func pingCom (conn net.Conn, args ...string){
+	conn.Write([]byte("+PONG\r\n"))
+}
+
+func echoCom (conn net.Conn, args ...string){
+	fmt.Println(args)
+	input := args[0]
+	conn.Write([]byte("$"+string(len(input))+"\r\n"+input+"r\n"))
+}
+
+func parseResp (data string) []string {
+	result := strings.Split(data, "$")
+
+	if len(result) > 1 {
+		result = result[1:]
+		for i := range result {
+			result[i] = strings.Split(result[i], "\\r\\n")[1] 
+		}
+	}
+
+	return result
+}
+
+
+
+
 func handleConenction(conn net.Conn) {
 	defer conn.Close();
 
@@ -44,8 +71,21 @@ func handleConenction(conn net.Conn) {
 		if err != nil {
 			return
 		}
-		fmt.Println("Received data", buf[:n])
-	
-		conn.Write([]byte("+PONG\r\n"))	
+		input :=string(buf[:n-1])
+		args := parseResp(input)
+		command := args[0]
+		values := args[1:]
+
+
+		switch(command) {
+		case "ping":
+			pingCom(conn, values...)
+		case "echo":
+			echoCom(conn, values...)
+		default: {
+			conn.Write([]byte("not found\r\n"))
+		}
+		}
+		
 	}
 }
