@@ -80,6 +80,7 @@ func handleConenction(conn net.Conn) {
 		}
 		input :=string(buf[:n-1])
 		var args []string;
+		fmt.Print(input)
 		fmt.Println(input[0])
 		if(input[0] == 42) {
 			args = parseResp(input)
