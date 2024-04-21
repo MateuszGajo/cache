@@ -42,7 +42,7 @@ func pingCom (conn net.Conn){
 }
 
 func echoCom (conn net.Conn, input string){
-	conn.Write([]byte("$"+ strconv.Itoa(len(input))+"\r\n"+input+"r\n"))
+	conn.Write([]byte("$"+ strconv.Itoa(len(input))+"\r\n"+input+"\r\n"))
 }
 
 // func BuildResponse(message string) string {
