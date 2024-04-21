@@ -52,7 +52,13 @@ func parseResp (data string) []string {
 	if len(result) > 1 {
 		result = result[1:]
 		for i := range result {
-			result[i] = strings.Split(result[i], "\\r\\n")[1] 
+			parts := strings.Split(result[i], "\\r\\n")
+			if(len(parts) > 1) {
+				result[i] = parts[1] 
+			} else {
+				result[i] = parts[0] 
+			}
+			
 		}
 	}
 
@@ -72,7 +78,12 @@ func handleConenction(conn net.Conn) {
 			return
 		}
 		input :=string(buf[:n-1])
-		args := parseResp(input)
+		var args []string;
+		if(input[0] < 'a' || input[0] > 'Z') {
+			args = parseResp(input)
+		} else {
+			args = strings.Split(input, " ")
+		}
 		command := args[0]
 		values := args[1:]
 
