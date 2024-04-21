@@ -65,15 +65,15 @@ func handleConenction(conn net.Conn) {
 			return
 		}
 
-		command := args[2]
+		command := Commands(strings.ToUpper(args[2]))
 
 		var response string
 
 
 		switch(command) {
-		case "ping":
+		case PING:
 			response = "+PONG\r\n"
-		case "echo":
+		case ECHO:
 			response = BuildResponse(args[4])
 		default: {
 			response = "-ERR unknown command\r\n"
