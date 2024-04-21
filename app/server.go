@@ -37,15 +37,18 @@ func main() {
 	
 }
 
-func pingCom (conn net.Conn, args ...string){
+func pingCom (conn net.Conn){
 	conn.Write([]byte("+PONG\r\n"))
 }
 
-func echoCom (conn net.Conn, args ...string){
-	fmt.Println(args)
-	input := args[0]
+func echoCom (conn net.Conn, input string){
 	conn.Write([]byte("$"+ strconv.Itoa(len(input))+"\r\n"+input+"r\n"))
 }
+
+// func BuildResponse(message string) string {
+// 	return fmt.Sprintf("$%v\r\n%s\r\n", len(message), message)
+
+// }
 
 
 type Commands string
@@ -84,14 +87,13 @@ func handleConenction(conn net.Conn) {
 
 		fmt.Println(args)
 		command := args[2]
-		values := args[3:]
 
 
 		switch(command) {
 		case "ping":
-			pingCom(conn, values...)
+			pingCom(conn)
 		case "echo":
-			echoCom(conn, values...)
+			echoCom(conn, args[4])
 		default: {
 			conn.Write([]byte("not found\r\n"))
 		}
