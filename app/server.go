@@ -79,7 +79,8 @@ func handleConenction(conn net.Conn) {
 		}
 		input :=string(buf[:n-1])
 		var args []string;
-		if(input[0] < 'a' || input[0] > 'Z') {
+		fmt.Println(input[0])
+		if(input[0] == 42) {
 			args = parseResp(input)
 		} else {
 			args = strings.Split(input, " ")
