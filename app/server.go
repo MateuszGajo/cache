@@ -44,8 +44,6 @@ func main() {
 
 func BuildResponse(message string) string {
 	return fmt.Sprintf("$%v\r\n%s\r\n", len(message), message)
-
-
 }
 
 
@@ -84,6 +82,11 @@ func handleConenction(conn net.Conn) {
 		}
 
 		_, err = conn.Write([]byte(response))
+
+		if err != nil {
+			fmt.Println("Error writing to connection: ", err.Error())
+			return
+		}
 		
 	}
 }
