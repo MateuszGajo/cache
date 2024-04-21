@@ -51,6 +51,7 @@ func parseResp (data string) []string {
 
 	if len(result) > 1 {
 		result = result[1:]
+		fmt.Println(result)
 		for i := range result {
 			parts := strings.Split(result[i], "\\r\\n")
 			if(len(parts) > 1) {
@@ -85,6 +86,7 @@ func handleConenction(conn net.Conn) {
 		} else {
 			args = strings.Split(input, " ")
 		}
+		fmt.Println(args)
 		command := args[1]
 		values := args[2:]
 
