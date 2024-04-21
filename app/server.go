@@ -84,8 +84,8 @@ func handleConenction(conn net.Conn) {
 		} else {
 			args = strings.Split(input, " ")
 		}
-		command := args[0]
-		values := args[1:]
+		command := args[1]
+		values := args[2:]
 
 
 		switch(command) {
