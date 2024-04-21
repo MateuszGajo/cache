@@ -46,22 +46,17 @@ func echoCom (conn net.Conn, args ...string){
 	conn.Write([]byte("$"+string(len(input))+"\r\n"+input+"r\n"))
 }
 
-func parseResp (data string) []string {
-	result := strings.Split(data, "$")
 
-	if len(result) > 1 {
-		result = result[1:]
-		fmt.Println(result)
-		for i := range result {
-			parts := strings.Split(result[i], "\\r\\n")
-			if(len(parts) > 1) {
-				result[i] = parts[1] 
-			} else {
-				result[i] = parts[0] 
-			}
-			
-		}
-	}
+type Commands string
+
+const (
+	CLRF string = "\r\n"
+	PING Commands = "PING"
+	ECHO Commands = "ECHO"
+)
+
+func parseResp (data string) []string {
+	result := strings.Split(data, CLRF)
 
 	return result
 }
@@ -79,17 +74,16 @@ func handleConenction(conn net.Conn) {
 			return
 		}
 		input :=string(buf[:n])
-		var args []string;
-		fmt.Print(input)
-		fmt.Println(input[0])
-		if(input[0] == 42) {
-			args = parseResp(input)
-		} else {
-			args = strings.Split(input, " ")
+		args := parseResp(input)
+		fmt.Print(args)
+		if len(args) < 3 {
+			fmt.Println("invalid command received:", input)
+			return
 		}
+
 		fmt.Println(args)
-		command := args[1]
-		values := args[2:]
+		command := args[2]
+		values := args[3:]
 
 
 		switch(command) {
