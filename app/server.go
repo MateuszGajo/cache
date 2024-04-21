@@ -2,13 +2,18 @@ package main
 
 import (
 	"fmt"
-	"os"
-	"strconv"
-	"strings"
-
-	// Uncomment this block to pass the first stage
 	"net"
-	// "os"
+	"os"
+	"strings"
+)
+
+type Commands string
+
+const (
+	CLRF string = "\r\n"
+	PING Commands = "PING"
+	ECHO Commands = "ECHO"
+
 )
 
 func main() {
@@ -37,34 +42,11 @@ func main() {
 	
 }
 
-func pingCom (conn net.Conn){
-	conn.Write([]byte("+PONG\r\n"))
+func BuildResponse(message string) string {
+	return fmt.Sprintf("$%v\r\n%s\r\n", len(message), message)
+
+
 }
-
-func echoCom (conn net.Conn, input string){
-	conn.Write([]byte("$"+ strconv.Itoa(len(input))+"\r\n"+input+"\r\n"))
-}
-
-// func BuildResponse(message string) string {
-// 	return fmt.Sprintf("$%v\r\n%s\r\n", len(message), message)
-
-// }
-
-
-type Commands string
-
-const (
-	CLRF string = "\r\n"
-	PING Commands = "PING"
-	ECHO Commands = "ECHO"
-)
-
-func parseResp (data string) []string {
-	result := strings.Split(data, CLRF)
-
-	return result
-}
-
 
 
 
@@ -77,27 +59,31 @@ func handleConenction(conn net.Conn) {
 		if err != nil {
 			return
 		}
+
 		input :=string(buf[:n])
-		args := parseResp(input)
-		fmt.Print(args)
+		args := strings.Split(input, CLRF)
 		if len(args) < 3 {
 			fmt.Println("invalid command received:", input)
 			return
 		}
 
-		fmt.Println(args)
 		command := args[2]
+
+		var response string
 
 
 		switch(command) {
 		case "ping":
-			pingCom(conn)
+			response = "+PONG\r\n"
 		case "echo":
-			echoCom(conn, args[4])
+			response = BuildResponse(args[4])
 		default: {
-			conn.Write([]byte("not found\r\n"))
+			response = "-ERR unknown command\r\n"
+			fmt.Println("invalid command received:", command)
 		}
 		}
+
+		_, err = conn.Write([]byte(response))
 		
 	}
 }
