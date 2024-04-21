@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	// Uncomment this block to pass the first stage
@@ -43,7 +44,7 @@ func pingCom (conn net.Conn, args ...string){
 func echoCom (conn net.Conn, args ...string){
 	fmt.Println(args)
 	input := args[0]
-	conn.Write([]byte("$"+string(len(input))+"\r\n"+input+"r\n"))
+	conn.Write([]byte("$"+ strconv.Itoa(len(input))+"\r\n"+input+"r\n"))
 }
 
 
