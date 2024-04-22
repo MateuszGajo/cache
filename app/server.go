@@ -4,17 +4,35 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"runtime"
 	"strings"
 )
 
 type Commands string
 
 const (
-	CLRF string = "\r\n"
 	PING Commands = "PING"
 	ECHO Commands = "ECHO"
-
+	SET Commands = "SET"
+	GET Commands = "GET"
 )
+
+var CLRF string
+
+func init() {
+    os := runtime.GOOS
+
+    if os == "windows" {
+        CLRF = "\\r\\n"
+    } else {
+        CLRF = "\r\n"
+    }
+}
+
+
+
+
+var m = map[string]string{}
 
 func main() {
 	// You can use print statements as follows for debugging, they'll be visible when running tests.
@@ -46,6 +64,14 @@ func BuildResponse(message string) string {
 	return fmt.Sprintf("$%v\r\n%s\r\n", len(message), message)
 }
 
+func handleSet(key, value string) string {
+	m[key] = value
+	return "+OK\r\n"
+}
+
+func handleGet(key string) string {
+	return BuildResponse(m[key])
+}
 
 
 func handleConenction(conn net.Conn) {
@@ -60,6 +86,8 @@ func handleConenction(conn net.Conn) {
 
 		input :=string(buf[:n])
 		args := strings.Split(input, CLRF)
+		// fmt.Print(command)
+		fmt.Print(args)
 		if len(args) < 3 {
 			fmt.Println("invalid command received:", input)
 			return
@@ -69,12 +97,18 @@ func handleConenction(conn net.Conn) {
 
 		var response string
 
+	
+
 
 		switch(command) {
 		case PING:
 			response = "+PONG\r\n"
 		case ECHO:
 			response = BuildResponse(args[4])
+		case SET:
+			response = handleSet(args[4], args[6])
+		case GET:
+			response = handleGet(args[4])
 		default: {
 			response = "-ERR unknown command\r\n"
 			fmt.Println("invalid command received:", command)
