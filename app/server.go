@@ -6,6 +6,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"sync"
 )
 
 type Commands string
@@ -33,6 +34,7 @@ func init() {
 
 
 var m = map[string]string{}
+var lock = sync.RWMutex{}
 
 func main() {
 	// You can use print statements as follows for debugging, they'll be visible when running tests.
@@ -65,14 +67,23 @@ func BuildResponse(message string) string {
 }
 
 func handleSet(key, value string) string {
+	lock.Lock()
+	defer lock.Unlock()
 	m[key] = value
 	return "+OK\r\n"
 }
 
 func handleGet(key string) string {
-	return BuildResponse(m[key])
+	defer lock.RUnlock()
+	lock.RLock()
+	val, ok := m[key]
+	if !ok {
+		fmt.Println("Can't read value for %v", key)
+		os.Exit(1)
+	}
+	
+	return BuildResponse(val)
 }
-
 
 func handleConenction(conn net.Conn) {
 	defer conn.Close();
@@ -86,7 +97,6 @@ func handleConenction(conn net.Conn) {
 
 		input :=string(buf[:n])
 		args := strings.Split(input, CLRF)
-		// fmt.Print(command)
 		fmt.Print(args)
 		if len(args) < 3 {
 			fmt.Println("invalid command received:", input)
