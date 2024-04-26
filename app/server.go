@@ -32,8 +32,13 @@ func init() {
     }
 }
 
+type CustomSetStore struct {
+	Value      string
+	ExpireAt  time.Time
+}
 
-var m = map[string]string{}
+
+var m = map[string]CustomSetStore{}
 var lock = sync.RWMutex{}
 
 func main() {
@@ -72,25 +77,34 @@ func handleRemove(key string) {
 	delete(m, key)
 } 
 
-func handleSet(key, value string, triggerMs *int) string {
+func handleSet(key, value string, expiryTime *int) string {
 	lock.Lock()
 	defer lock.Unlock()
-	m[key] = value
-	if triggerMs != nil {
-		time.AfterFunc(time.Duration(*triggerMs) *time.Millisecond, func (){handleRemove(key)})
+	if expiryTime != nil {
+		m[key] = CustomSetStore {
+			Value:  value,
+			ExpireAt: time.Now().Add(time.Duration(*expiryTime) * time.Millisecond),
+		}
+	} else {
+		m[key] = CustomSetStore {
+			Value:  value,
+			ExpireAt: time.Time{},
+		}
 	}
+	
+	
 	return "+OK\r\n"
 }
 
 func handleGet(key string) string {
 	defer lock.RUnlock()
 	lock.RLock()
-	val, ok := m[key]
-	if !ok {
+	r, ok := m[key]
+	if !ok || (time.Now().After(r.ExpireAt) && r.ExpireAt != time.Time{}) {
 		return "$-1\r\n"
 	}
-	
-	return BuildResponse(val)
+	//remove from store
+	return BuildResponse(r.Value)
 }
 
 func handleConenction(conn net.Conn) {
@@ -126,6 +140,7 @@ func handleConenction(conn net.Conn) {
 		case SET:	
 			switch(len(args)){
 			case 12:	
+				// command := args[8]
 				timeMs, err := strconv.Atoi(args[10])
 				if err != nil {
 					fmt.Print("invalid time")
