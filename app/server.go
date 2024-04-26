@@ -125,14 +125,14 @@ func handleConenction(conn net.Conn) {
 			response = BuildResponse(args[4])
 		case SET:	
 			switch(len(args)){
-			case 9:	
+			case 10:	
 				timeMs, err := strconv.Atoi(args[8])
 				if err != nil {
 					fmt.Print("invalid time")
 					os.Exit(1)
 				}
 				response = handleSet(args[4], args[6], &timeMs)
-			case 7:
+			case 8:
 				response = handleSet(args[4], args[6], nil)
 			}	
 		case GET:
