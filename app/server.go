@@ -33,8 +33,6 @@ func init() {
 }
 
 
-
-
 var m = map[string]string{}
 var lock = sync.RWMutex{}
 
@@ -74,11 +72,13 @@ func handleRemove(key string) {
 	delete(m, key)
 } 
 
-func handleSet(key, value string, triggerMs int) string {
+func handleSet(key, value string, triggerMs *int) string {
 	lock.Lock()
 	defer lock.Unlock()
 	m[key] = value
-	time.AfterFunc(time.Duration(triggerMs) *time.Millisecond, func (){handleRemove(key)})
+	if triggerMs != nil {
+		time.AfterFunc(time.Duration(*triggerMs) *time.Millisecond, func (){handleRemove(key)})
+	}
 	return "+OK\r\n"
 }
 
@@ -123,14 +123,18 @@ func handleConenction(conn net.Conn) {
 			response = "+PONG\r\n"
 		case ECHO:
 			response = BuildResponse(args[4])
-		case SET:
-			timeMs, err := strconv.Atoi(args[8])
-
-			if err != nil {
-				fmt.Print("invalid time")
-				os.Exit(1)
-			}
-			response = handleSet(args[4], args[6], timeMs)
+		case SET:	
+			switch(len(args)){
+			case 9:	
+				timeMs, err := strconv.Atoi(args[8])
+				if err != nil {
+					fmt.Print("invalid time")
+					os.Exit(1)
+				}
+				response = handleSet(args[4], args[6], &timeMs)
+			case 7:
+				response = handleSet(args[4], args[6], nil)
+			}	
 		case GET:
 			response = handleGet(args[4])
 		default: {
