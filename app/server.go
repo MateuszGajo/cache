@@ -5,8 +5,10 @@ import (
 	"net"
 	"os"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 type Commands string
@@ -66,10 +68,17 @@ func BuildResponse(message string) string {
 	return fmt.Sprintf("$%v\r\n%s\r\n", len(message), message)
 }
 
-func handleSet(key, value string) string {
+func handleRemove(key string) {
+	lock.Lock()
+	defer lock.Unlock()
+	delete(m, key)
+} 
+
+func handleSet(key, value string, triggerMs int) string {
 	lock.Lock()
 	defer lock.Unlock()
 	m[key] = value
+	time.AfterFunc(time.Duration(triggerMs) *time.Millisecond, func (){handleRemove(key)})
 	return "+OK\r\n"
 }
 
@@ -78,8 +87,7 @@ func handleGet(key string) string {
 	lock.RLock()
 	val, ok := m[key]
 	if !ok {
-		fmt.Println("Can't read value for %v", key)
-		os.Exit(1)
+		return "$-1\r\n"
 	}
 	
 	return BuildResponse(val)
@@ -107,8 +115,8 @@ func handleConenction(conn net.Conn) {
 
 		var response string
 
-	
-
+		
+		
 
 		switch(command) {
 		case PING:
@@ -116,7 +124,13 @@ func handleConenction(conn net.Conn) {
 		case ECHO:
 			response = BuildResponse(args[4])
 		case SET:
-			response = handleSet(args[4], args[6])
+			timeMs, err := strconv.Atoi(args[8])
+
+			if err != nil {
+				fmt.Print("invalid time")
+				os.Exit(1)
+			}
+			response = handleSet(args[4], args[6], timeMs)
 		case GET:
 			response = handleGet(args[4])
 		default: {
