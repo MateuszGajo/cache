@@ -19,6 +19,7 @@ const (
 	ECHO Commands = "ECHO"
 	SET Commands = "SET"
 	GET Commands = "GET"
+	INFO COmmands = "INFO"
 )
 
 var CLRF string
@@ -48,6 +49,18 @@ func init(){
 	flag.IntVar(&port, "port", 6379, "port to listen to")
 	flag.Parse()
 }
+
+// type Server struct {
+// 	address string
+// 	rep     *replication
+// }
+
+// func NewServer(network string, port string) *Server {
+// 	return &Server{
+// 		address: fmt.Sprintf("0.0.0.0:%s", port),
+// 		rep:     newReplication(master),
+// 	}
+// }
 
 func main() {
 	// You can use print statements as follows for debugging, they'll be visible when running tests.
@@ -160,6 +173,8 @@ func handleConenction(conn net.Conn) {
 			}	
 		case GET:
 			response = handleGet(args[4])
+		case INFO:
+			response = BuildResponse("role:master")
 		default: {
 			response = "-ERR unknown command\r\n"
 			fmt.Println("invalid command received:", command)
