@@ -43,17 +43,24 @@ type CustomSetStore struct {
 var m = map[string]CustomSetStore{}
 var lock = sync.RWMutex{}
 
+type Replica struct {
+	Port string
+	Address string
+}
+
 var port int
+var replica Replica
 
 func init(){
 	flag.IntVar(&port, "port", 6379, "port to listen to")
+	flag.StringVar(&replica.Port, "replicaof", "", "master address")
 	flag.Parse()
+	replica.Address = flag.Args()[0]
 }
 
-// type Server struct {
-// 	address string
-// 	rep     *replication
-// }
+type Server struct {
+	role string
+}
 
 // func NewServer(network string, port string) *Server {
 // 	return &Server{
@@ -67,7 +74,14 @@ func main() {
 	fmt.Println("Logs from your program will appear here!")
 
 	// Uncomment this block to pass the first stage
+	serverCon := Server{
+		role: "master",
+	}
+	if(replica != Replica {}) {
+		serverCon.role = "replica"
+	}
 	
+
 	ln, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
 	if err != nil {
 		fmt.Printf("Failed to run on port %d", port)
@@ -84,7 +98,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		go handleConenction(conn)
+		go handleConenction(conn, serverCon)
 	}
 	
 }
@@ -129,7 +143,7 @@ func handleGet(key string) string {
 	return BuildResponse(r.Value)
 }
 
-func handleConenction(conn net.Conn) {
+func handleConenction(conn net.Conn, serverCon Server) {
 	defer conn.Close();
 
 	for {
@@ -150,9 +164,6 @@ func handleConenction(conn net.Conn) {
 		command := Commands(strings.ToUpper(args[2]))
 
 		var response string
-
-		
-		
 
 		switch(command) {
 		case PING:
@@ -175,7 +186,7 @@ func handleConenction(conn net.Conn) {
 		case GET:
 			response = handleGet(args[4])
 		case INFO:
-			response = BuildResponse("role:master")
+			response = BuildResponse("role:"+ serverCon.role)
 		default: {
 			response = "-ERR unknown command\r\n"
 			fmt.Println("invalid command received:", command)
