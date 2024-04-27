@@ -114,12 +114,17 @@ func BuildResponse(message string) string {
  return fmt.Sprintf("$%v\r\n%s\r\n", len(message), message)
 }
 
-func BuildResponses(message []string) string {
-	res := ""
+func BuildResponses(messages []string) string {
+	res := fmt.Sprintf("*%v\r\n", len(messages))
 
-	for _, val := range message {
+	for _, val := range messages {
+		fmt.Print("inside loop")
+		fmt.Print(BuildResponse(val))
 		res += BuildResponse(val)
 	}
+
+	fmt.Println("res")
+	fmt.Println(res)
 
 	return res 
 }
@@ -172,7 +177,7 @@ func handleConenction(conn net.Conn, serverCon Server) {
 
 		input :=string(buf[:n])
 		args := strings.Split(input, CLRF)
-		fmt.Print(args)
+		fmt.Println(args)
 		if len(args) < 3 {
 			fmt.Println("invalid command received:", input)
 			return
@@ -208,11 +213,13 @@ func handleConenction(conn net.Conn, serverCon Server) {
 				"master_replid:" + serverCon.replicaId,
 				"master_repl_offset:" + strconv.Itoa(serverCon.replicaOffSet),
 			})
+			fmt.Printf("response, %v",response)
 		default: {
 			response = "-ERR unknown command\r\n"
 			fmt.Println("invalid command received:", command)
 		}
 		}
+		
 
 		_, err = conn.Write([]byte(response))
 
