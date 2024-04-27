@@ -62,6 +62,8 @@ func init(){
 
 type Server struct {
 	role string
+	replicaId string
+	replicaOffSet int
 }
 
 // func NewServer(network string, port string) *Server {
@@ -81,6 +83,9 @@ func main() {
 	}
 	if(replica != Replica {}) {
 		serverCon.role = "slave"
+	} else {
+		serverCon.replicaOffSet = 0
+		serverCon.replicaId = "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb"
 	}
 	
 
@@ -106,7 +111,17 @@ func main() {
 }
 
 func BuildResponse(message string) string {
-	return fmt.Sprintf("$%v\r\n%s\r\n", len(message), message)
+ return fmt.Sprintf("$%v\r\n%s\r\n", len(message), message)
+}
+
+func BuildResponses(message []string) string {
+	res := ""
+
+	for _, val := range message {
+		res += BuildResponse(val)
+	}
+
+	return res 
 }
 
 func handleRemove(key string) {
@@ -188,7 +203,11 @@ func handleConenction(conn net.Conn, serverCon Server) {
 		case GET:
 			response = handleGet(args[4])
 		case INFO:
-			response = BuildResponse("role:"+ serverCon.role)
+			response = BuildResponses([] string {
+				"role:"+ serverCon.role,
+				"master_replid:" + serverCon.replicaId,
+				"master_repl_offset:" + strconv.Itoa(serverCon.replicaOffSet),
+			})
 		default: {
 			response = "-ERR unknown command\r\n"
 			fmt.Println("invalid command received:", command)
