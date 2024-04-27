@@ -44,9 +44,14 @@ var lock = sync.RWMutex{}
 func main() {
 	// You can use print statements as follows for debugging, they'll be visible when running tests.
 	fmt.Println("Logs from your program will appear here!")
+	command := os.Args[1]
+	port := "6379"
+	if(command == "--port") {
+		port = os.Args[2]
+	}
 
 	// Uncomment this block to pass the first stage
-	ln, err := net.Listen("tcp", "127.0.0.1:6379")
+	ln, err := net.Listen("tcp", "127.0.0.1:" + port)
 	if err != nil {
 		fmt.Println("Failed to run on port 6379")
 		os.Exit(1)
@@ -103,7 +108,7 @@ func handleGet(key string) string {
 	if !ok || (time.Now().After(r.ExpireAt) && r.ExpireAt != time.Time{}) {
 		return "$-1\r\n"
 	}
-	//remove from store
+	
 	return BuildResponse(r.Value)
 }
 
