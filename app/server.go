@@ -19,7 +19,7 @@ const (
 	ECHO Commands = "ECHO"
 	SET Commands = "SET"
 	GET Commands = "GET"
-	INFO COmmands = "INFO"
+	INFO Commands = "INFO"
 )
 
 var CLRF string
