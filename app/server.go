@@ -208,11 +208,7 @@ func handleConenction(conn net.Conn, serverCon Server) {
 		case GET:
 			response = handleGet(args[4])
 		case INFO:
-			response = BuildResponses([] string {
-				"role:"+ serverCon.role,
-				"master_replid:" + serverCon.replicaId,
-				"master_repl_offset:" + strconv.Itoa(serverCon.replicaOffSet),
-			})
+			response = BuildResponse("role:"+ serverCon.role +"master_replid:" + serverCon.replicaId +"master_repl_offset:" + strconv.Itoa(serverCon.replicaOffSet))
 			fmt.Printf("response, %v",response)
 		default: {
 			response = "-ERR unknown command\r\n"
