@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"net"
 	"os"
@@ -41,22 +42,21 @@ type CustomSetStore struct {
 var m = map[string]CustomSetStore{}
 var lock = sync.RWMutex{}
 
+var port int
+
+func init(){
+	flag.IntVar(&port, "port", 6379, "port to listen to")
+	flag.Parse()
+}
+
 func main() {
 	// You can use print statements as follows for debugging, they'll be visible when running tests.
 	fmt.Println("Logs from your program will appear here!")
-	port := "6379"
-	if len(os.Args) >2 {
-		command := os.Args[1]
-	
-		if(command == "--port") {
-			port = os.Args[2]
-		}
-	}
 
 	// Uncomment this block to pass the first stage
-	ln, err := net.Listen("tcp", "127.0.0.1:" + port)
+	ln, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
 	if err != nil {
-		fmt.Println("Failed to run on port 6379")
+		fmt.Printf("Failed to run on port %d", port)
 		os.Exit(1)
 	}
 
