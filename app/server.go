@@ -80,7 +80,7 @@ func main() {
 		role: "master",
 	}
 	if(replica != Replica {}) {
-		serverCon.role = "replica"
+		serverCon.role = "slave"
 	}
 	
 
