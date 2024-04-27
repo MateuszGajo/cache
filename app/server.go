@@ -44,10 +44,13 @@ var lock = sync.RWMutex{}
 func main() {
 	// You can use print statements as follows for debugging, they'll be visible when running tests.
 	fmt.Println("Logs from your program will appear here!")
-	command := os.Args[1]
 	port := "6379"
-	if(command == "--port") {
-		port = os.Args[2]
+	if len(os.Args) >2 {
+		command := os.Args[1]
+	
+		if(command == "--port") {
+			port = os.Args[2]
+		}
 	}
 
 	// Uncomment this block to pass the first stage
