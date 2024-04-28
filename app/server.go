@@ -195,15 +195,14 @@ func handleGet(key string) string {
 	return BuildResponse(r.Value)
 }
 
-func readInput(conn net.Conn) []string {
-	buf := make([]byte, 1024)
-	n, err := conn.Read(buf)
-	if err != nil {
-		fmt.Print("problem reading", err)
-		os.Exit(1)
-	}
+func RESPSimpleString (input string) string{
+	arg := strings.Split(input, CLRF)[0]
+	arg = strings.Trim(arg, "+")
 
-	input :=string(buf[:n])
+	return arg
+}
+
+func RESPArray(input string) [] string {
 	fmt.Printf("\n %v \n", input)
 	args := strings.Split(input, CLRF)
 
@@ -216,6 +215,47 @@ func readInput(conn net.Conn) []string {
 	}
 
 	return command
+}
+
+func RESPBulkString(input string) []string {
+	fmt.Printf("\n %v \n", input)
+	args := strings.Split(input, CLRF)
+
+	fmt.Println(args)
+
+	command  := make([]string, 0, ((len(args) -1) /2))
+
+	for i :=2; i< len(args); i = i+2 {
+		command = append(command, args[i])
+	}
+
+	return command
+}
+
+func readInput(conn net.Conn) []string {
+	buf := make([]byte, 1024)
+	n, err := conn.Read(buf)
+	if err != nil {
+		fmt.Print("problem reading", err)
+		os.Exit(1)
+	}
+
+	command := []string {}
+	input :=string(buf[:n])
+	switch(input[0]) {
+	case 43:
+		command = append(command,RESPSimpleString(input))
+	case 36:
+		command = RESPBulkString(input)
+	case 42:
+		command = RESPArray(input)
+	default:
+		fmt.Print("Unknown RESP enconfing")
+		os.Exit(1)
+	}
+
+	return command
+
 }
 
 func handleConenction(conn net.Conn, serverCon Server) {
