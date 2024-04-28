@@ -73,7 +73,7 @@ type Server struct {
 // 	}
 // }
 
-func replicaInit() error {
+func handShake() error {
 	conn, err := net.Dial("tcp", replica.Address + ":" + replica.Port)
 
 	if err != nil {
@@ -83,6 +83,17 @@ func replicaInit() error {
 	defer conn.Close()
 
 	conn.Write([]byte("*1\r\n$4\r\nping\r\n"))
+
+
+	args := readInput(conn)
+
+	if(args[0] == "+PONG") {
+		conn.Write([]byte("*3\r\n$8\r\nREPLCONF\r\n$14\r\nlistening-port\r\n$4\r\n" +replica.Port+ "\r\n"))
+		conn.Write([]byte("*3\r\n$8\r\nREPLCONF\r\n$4\r\ncapa\r\n$6\r\npsync2\r\n"))
+	}
+
+
+
 
 	return nil
 }
@@ -97,7 +108,7 @@ func main() {
 	}
 	if(replica != Replica {}) {
 		serverCon.role = "slave"
-		replicaInit()
+		handShake()
 	} else {
 		serverCon.replicaOffSet = 0
 		serverCon.replicaId = "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb"
@@ -180,23 +191,34 @@ func handleGet(key string) string {
 	return BuildResponse(r.Value)
 }
 
+func readInput(conn net.Conn) []string {
+	buf := make([]byte, 1024)
+	n, err := conn.Read(buf)
+	if err != nil {
+		fmt.Print("problem reading", err)
+		os.Exit(1)
+	}
+
+	input :=string(buf[:n])
+	args := strings.Split(input, CLRF)
+	fmt.Println(args)
+	fmt.Println(len(args))
+
+	// if len(args) < 3 {
+	// 	fmt.Println("invalid command received:", input)
+	// 	os.Exit(1)
+	// }
+
+	return args
+}
+
 func handleConenction(conn net.Conn, serverCon Server) {
 	defer conn.Close();
 
 	for {
-		buf := make([]byte, 1024)
-		n, err := conn.Read(buf)
-		if err != nil {
-			return
-		}
+		args := readInput(conn)
 
-		input :=string(buf[:n])
-		args := strings.Split(input, CLRF)
-		fmt.Println(args)
-		if len(args) < 3 {
-			fmt.Println("invalid command received:", input)
-			return
-		}
+
 
 		command := Commands(strings.ToUpper(args[2]))
 
@@ -232,7 +254,7 @@ func handleConenction(conn net.Conn, serverCon Server) {
 		}
 		
 
-		_, err = conn.Write([]byte(response))
+		_, err := conn.Write([]byte(response))
 
 		if err != nil {
 			fmt.Println("Error writing to connection: ", err.Error())
