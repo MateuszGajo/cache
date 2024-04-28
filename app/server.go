@@ -53,10 +53,10 @@ var replica Replica
 
 func init(){
 	flag.IntVar(&port, "port", 6379, "port to listen to")
-	flag.StringVar(&replica.Port, "replicaof", "", "master address")
+	flag.StringVar(&replica.Address, "replicaof", "", "master address")
 	flag.Parse()
 	if len(flag.Args()) > 0 {
-		replica.Address = flag.Args()[0]
+		replica.Port = flag.Args()[0]
 	}
 }
 
@@ -73,6 +73,20 @@ type Server struct {
 // 	}
 // }
 
+func replicaInit() error {
+	conn, err := net.Dial("tcp", replica.Address + ":" + replica.Port)
+
+	if err != nil {
+		fmt.Printf("cannot connect to %v:%v", replica.Address, replica.Port)
+	}
+
+	defer conn.Close()
+
+	conn.Write([]byte("*1\r\n$4\r\nping\r\n"))
+
+	return nil
+}
+
 func main() {
 	// You can use print statements as follows for debugging, they'll be visible when running tests.
 	fmt.Println("Logs from your program will appear here!")
@@ -83,6 +97,7 @@ func main() {
 	}
 	if(replica != Replica {}) {
 		serverCon.role = "slave"
+		replicaInit()
 	} else {
 		serverCon.replicaOffSet = 0
 		serverCon.replicaId = "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb"
