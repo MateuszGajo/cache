@@ -89,6 +89,8 @@ func handShake() error {
 
 	if(args[0] == "+PONG") {
 		conn.Write([]byte("*3\r\n$8\r\nREPLCONF\r\n$14\r\nlistening-port\r\n$4\r\n" + strconv.Itoa((port)) + "\r\n")) // fix ports 
+		args := readInput(conn)
+		fmt.Print(args)
 		conn.Write([]byte("*3\r\n$8\r\nREPLCONF\r\n$4\r\ncapa\r\n$6\r\npsync2\r\n"))
 	}
 
