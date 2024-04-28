@@ -206,11 +206,6 @@ func readInput(conn net.Conn) []string {
 	fmt.Println(args)
 	fmt.Println(len(args))
 
-	// if len(args) < 3 {
-	// 	fmt.Println("invalid command received:", input)
-	// 	os.Exit(1)
-	// }
-
 	return args
 }
 
@@ -219,6 +214,11 @@ func handleConenction(conn net.Conn, serverCon Server) {
 
 	for {
 		args := readInput(conn)
+
+		if len(args) < 3 {
+		fmt.Println("invalid command received:")
+		os.Exit(1)
+		}
 
 
 
