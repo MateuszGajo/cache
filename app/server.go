@@ -204,9 +204,12 @@ func readInput(conn net.Conn) []string {
 	}
 
 	input :=string(buf[:n])
+	fmt.Printf("\n %v \n", input)
 	args := strings.Split(input, CLRF)
 
-	command  := make([]string, 0, (len(args) -1 /2))
+	fmt.Println(args)
+
+	command  := make([]string, 0, ((len(args) -1) /2))
 
 	for i :=2; i< len(args); i = i+2 {
 		command = append(command, args[i])
