@@ -87,7 +87,7 @@ func handShake() error {
 
 	args := readInput(conn)
 
-	if args[0] != "+PONG" {
+	if args[0] != "PONG" {
 		fmt.Print("Response its invalid")
 		os.Exit(1)
 	}
@@ -95,7 +95,7 @@ func handShake() error {
 	conn.Write([]byte("*3\r\n$8\r\nREPLCONF\r\n$14\r\nlistening-port\r\n$4\r\n" + strconv.Itoa((port)) + "\r\n"))
 	args = readInput(conn)
 
-	if args[0] != "+OK" {
+	if args[0] != "OK" {
 		fmt.Print("Response its invalid")
 		os.Exit(1)
 	}
@@ -242,6 +242,7 @@ func readInput(conn net.Conn) []string {
 
 	command := []string {}
 	input :=string(buf[:n])
+	fmt.Println(input)
 	switch(input[0]) {
 	case 43:
 		command = append(command,RESPSimpleString(input))
@@ -253,6 +254,7 @@ func readInput(conn net.Conn) []string {
 		fmt.Print("Unknown RESP enconfing")
 		os.Exit(1)
 	}
+	fmt.Println(command)
 
 	return command
 
