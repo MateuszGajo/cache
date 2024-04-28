@@ -166,6 +166,10 @@ func handleRemove(key string) {
 } 
 
 func handleSet(key, value string, expiryTime *int) string {
+	fmt.Print("SET?S")
+	fmt.Println(key)
+	fmt.Println(value)
+	fmt.Println(expiryTime)
 	lock.Lock()
 	defer lock.Unlock()
 	if expiryTime != nil {
@@ -285,7 +289,7 @@ func handleConenction(conn net.Conn, serverCon Server) {
 			response = BuildResponse(args[4])
 		case SET:	
 			switch(len(args)){
-			case 4:	
+			case 5:	//THAT MAGIC VALUE FOR 
 				// command := args[3]
 				timeMs, err := strconv.Atoi(args[4])
 				if err != nil {
@@ -293,7 +297,7 @@ func handleConenction(conn net.Conn, serverCon Server) {
 					os.Exit(1)
 				}
 				response = handleSet(args[1], args[2], &timeMs)
-			case 3:
+			case 4:
 				response = handleSet(args[1], args[2], nil)
 			}	
 		case GET:
