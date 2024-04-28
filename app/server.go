@@ -286,7 +286,7 @@ func handleConenction(conn net.Conn, serverCon Server) {
 		case PING:
 			response = "+PONG\r\n"
 		case ECHO:
-			response = BuildResponse(args[2])
+			response = BuildResponse(args[1])
 		case SET:	
 			switch(len(args)){
 			case 5:	//THAT MAGIC VALUE FOR 
