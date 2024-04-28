@@ -28,7 +28,7 @@ func init() {
     os := runtime.GOOS
 
     if os == "windows" {
-        CLRF = "\\r\\n"
+        CLRF = "\\r\\n" // fix this
     } else {
         CLRF = "\r\n"
     }
@@ -88,7 +88,7 @@ func handShake() error {
 	args := readInput(conn)
 
 	if(args[0] == "+PONG") {
-		conn.Write([]byte("*3\r\n$8\r\nREPLCONF\r\n$14\r\nlistening-port\r\n$4\r\n" +replica.Port+ "\r\n"))
+		conn.Write([]byte("*3\r\n$8\r\nREPLCONF\r\n$14\r\nlistening-port\r\n$4\r\n" + strconv.Itoa((port)) + "\r\n"))
 		conn.Write([]byte("*3\r\n$8\r\nREPLCONF\r\n$4\r\ncapa\r\n$6\r\npsync2\r\n"))
 	}
 
