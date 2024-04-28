@@ -87,15 +87,21 @@ func handShake() error {
 
 	args := readInput(conn)
 
-	if(args[0] == "+PONG") {
-		conn.Write([]byte("*3\r\n$8\r\nREPLCONF\r\n$14\r\nlistening-port\r\n$4\r\n" + strconv.Itoa((port)) + "\r\n")) // fix ports 
-		args := readInput(conn)
-		fmt.Print(args)
-		conn.Write([]byte("*3\r\n$8\r\nREPLCONF\r\n$4\r\ncapa\r\n$6\r\npsync2\r\n"))
+	if args[0] != "+PONG" {
+		fmt.Print("Response its invalid")
+		os.Exit(1)
 	}
 
+	conn.Write([]byte("*3\r\n$8\r\nREPLCONF\r\n$14\r\nlistening-port\r\n$4\r\n" + strconv.Itoa((port)) + "\r\n"))
+	args = readInput(conn)
 
+	if args[0] != "+OK" {
+		fmt.Print("Response its invalid")
+		os.Exit(1)
+	}
 
+	conn.Write([]byte("*3\r\n$8\r\nREPLCONF\r\n$4\r\ncapa\r\n$6\r\npsync2\r\n"))
+		
 
 	return nil
 }
@@ -146,13 +152,8 @@ func BuildResponses(messages []string) string {
 	res := fmt.Sprintf("*%v\r\n", len(messages))
 
 	for _, val := range messages {
-		fmt.Print("inside loop")
-		fmt.Print(BuildResponse(val))
 		res += BuildResponse(val)
 	}
-
-	fmt.Println("res")
-	fmt.Println(res)
 
 	return res 
 }
@@ -160,7 +161,8 @@ func BuildResponses(messages []string) string {
 func handleRemove(key string) {
 	lock.Lock()
 	defer lock.Unlock()
-	delete(m, key)
+	delete(m, key) 
+	//TO DO
 } 
 
 func handleSet(key, value string, expiryTime *int) string {
@@ -203,10 +205,14 @@ func readInput(conn net.Conn) []string {
 
 	input :=string(buf[:n])
 	args := strings.Split(input, CLRF)
-	fmt.Println(args)
-	fmt.Println(len(args))
 
-	return args
+	command  := make([]string, 0, (len(args) -1 /2))
+
+	for i :=2; i< len(args); i = i+2 {
+		command = append(command, args[i])
+	}
+
+	return command
 }
 
 func handleConenction(conn net.Conn, serverCon Server) {
@@ -214,15 +220,16 @@ func handleConenction(conn net.Conn, serverCon Server) {
 
 	for {
 		args := readInput(conn)
+		fmt.Print(args)
 
-		if len(args) < 3 {
-		fmt.Println("invalid command received:")
-		os.Exit(1)
+		if len(args) == 0 {
+			fmt.Println("No argument passed")
+			os.Exit(1)
 		}
 
 
 
-		command := Commands(strings.ToUpper(args[2]))
+		command := Commands(strings.ToUpper(args[0]))
 
 		var response string
 
@@ -233,19 +240,19 @@ func handleConenction(conn net.Conn, serverCon Server) {
 			response = BuildResponse(args[4])
 		case SET:	
 			switch(len(args)){
-			case 12:	
-				// command := args[8]
-				timeMs, err := strconv.Atoi(args[10])
+			case 4:	
+				// command := args[3]
+				timeMs, err := strconv.Atoi(args[4])
 				if err != nil {
 					fmt.Print("invalid time")
 					os.Exit(1)
 				}
-				response = handleSet(args[4], args[6], &timeMs)
-			case 8:
-				response = handleSet(args[4], args[6], nil)
+				response = handleSet(args[1], args[2], &timeMs)
+			case 3:
+				response = handleSet(args[1], args[2], nil)
 			}	
 		case GET:
-			response = handleGet(args[4])
+			response = handleGet(args[1])
 		case INFO:
 			response = BuildResponse("role:"+ serverCon.role +"master_replid:" + serverCon.replicaId +"master_repl_offset:" + strconv.Itoa(serverCon.replicaOffSet))
 			fmt.Printf("response, %v",response)
