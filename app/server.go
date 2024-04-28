@@ -297,7 +297,7 @@ func handleConenction(conn net.Conn, serverCon Server) {
 					os.Exit(1)
 				}
 				response = handleSet(args[1], args[2], &timeMs)
-			case 4:
+			case 3:
 				response = handleSet(args[1], args[2], nil)
 			}	
 		case GET:
