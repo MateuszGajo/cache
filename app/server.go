@@ -69,6 +69,7 @@ type Server struct {
 // 	}
 // }
 
+
 func handShake() error {
 	conn, err := net.Dial("tcp", replica.Address + ":" + replica.Port)
 
