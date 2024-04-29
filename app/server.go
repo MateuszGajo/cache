@@ -209,6 +209,6 @@ func handleConenction(conn net.Conn, serverCon Server) {
 			fmt.Println("Error writing to connection: ", err.Error())
 			return
 		}
-		
 	}
+	return;
 }
