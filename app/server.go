@@ -8,7 +8,6 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -39,9 +38,6 @@ type CustomSetStore struct {
 	ExpireAt  time.Time
 }
 
-
-var m = map[string]CustomSetStore{}
-var lock = sync.RWMutex{}
 
 type Replica struct {
 	Port string
@@ -92,7 +88,7 @@ func handShake() error {
 		os.Exit(1)
 	}
 
-	conn.Write([]byte("*3\r\n$8\r\nREPLCONF\r\n$14\r\nlistening-port\r\n$4\r\n" + strconv.Itoa((port)) + "\r\n"))
+	conn.Write([]byte("*3\r\n$8\r\nREPLCONF\r\n$14\r\nlistening-port\r\n$4\r\n" + strconv.Itoa((port)) + "\r\n")) // lets build it
 	args = readInput(conn)
 
 	if args[0] != "OK" {
@@ -100,7 +96,7 @@ func handShake() error {
 		os.Exit(1)
 	}
 
-	conn.Write([]byte("*3\r\n$8\r\nREPLCONF\r\n$4\r\ncapa\r\n$6\r\npsync2\r\n"))
+	conn.Write([]byte("*3\r\n$8\r\nREPLCONF\r\n$4\r\ncapa\r\n$6\r\npsync2\r\n")) // same lets build it
 		
 
 	return nil
@@ -144,98 +140,6 @@ func main() {
 	
 }
 
-func BuildResponse(message string) string {
- return fmt.Sprintf("$%v\r\n%s\r\n", len(message), message)
-}
-
-func BuildResponses(messages []string) string {
-	res := fmt.Sprintf("*%v\r\n", len(messages))
-
-	for _, val := range messages {
-		res += BuildResponse(val)
-	}
-
-	return res 
-}
-
-func handleRemove(key string) {
-	lock.Lock()
-	defer lock.Unlock()
-	delete(m, key) 
-	//TO DO
-} 
-
-func handleSet(key, value string, expiryTime *int) string {
-	fmt.Print("SET?S")
-	fmt.Println(key)
-	fmt.Println(value)
-	fmt.Println(expiryTime)
-	lock.Lock()
-	defer lock.Unlock()
-	if expiryTime != nil {
-		m[key] = CustomSetStore {
-			Value:  value,
-			ExpireAt: time.Now().Add(time.Duration(*expiryTime) * time.Millisecond),
-		}
-	} else {
-		m[key] = CustomSetStore {
-			Value:  value,
-			ExpireAt: time.Time{},
-		}
-	}
-	
-	
-	return "+OK\r\n"
-}
-
-func handleGet(key string) string {
-	defer lock.RUnlock()
-	lock.RLock()
-	r, ok := m[key]
-	if !ok || (time.Now().After(r.ExpireAt) && r.ExpireAt != time.Time{}) {
-		return "$-1\r\n"
-	}
-	
-	return BuildResponse(r.Value)
-}
-
-func RESPSimpleString (input string) string{
-	arg := strings.Split(input, CLRF)[0]
-	arg = strings.Trim(arg, "+")
-
-	return arg
-}
-
-func RESPArray(input string) [] string {
-	fmt.Printf("\n %v \n", input)
-	args := strings.Split(input, CLRF)
-
-	fmt.Println(args)
-
-	command  := make([]string, 0, ((len(args) -1) /2))
-
-	for i :=2; i< len(args); i = i+2 {
-		command = append(command, args[i])
-	}
-
-	return command
-}
-
-func RESPBulkString(input string) []string {
-	fmt.Printf("\n %v \n", input)
-	args := strings.Split(input, CLRF)
-
-	fmt.Println(args)
-
-	command  := make([]string, 0, ((len(args) -1) /2))
-
-	for i :=2; i< len(args); i = i+2 {
-		command = append(command, args[i])
-	}
-
-	return command
-}
-
 func readInput(conn net.Conn) []string {
 	buf := make([]byte, 1024)
 	n, err := conn.Read(buf)
@@ -246,7 +150,7 @@ func readInput(conn net.Conn) []string {
 
 	command := []string {}
 	input :=string(buf[:n])
-	fmt.Println(input)
+
 	switch(input[0]) {
 	case 43:
 		command = append(command,RESPSimpleString(input))
@@ -276,35 +180,21 @@ func handleConenction(conn net.Conn, serverCon Server) {
 			os.Exit(1)
 		}
 
-
-
 		command := Commands(strings.ToUpper(args[0]))
 
 		var response string
 
 		switch(command) {
 		case PING:
-			response = "+PONG\r\n"
+			response = Ping()
 		case ECHO:
-			response = BuildResponse(args[1])
+			response = Echo(args)
 		case SET:	
-			switch(len(args)){
-			case 5:	//THAT MAGIC VALUE FOR 
-				// command := args[3]
-				timeMs, err := strconv.Atoi(args[4])
-				if err != nil {
-					fmt.Print("invalid time")
-					os.Exit(1)
-				}
-				response = handleSet(args[1], args[2], &timeMs)
-			case 3:
-				response = handleSet(args[1], args[2], nil)
-			}	
+			response = Set(args)
 		case GET:
-			response = handleGet(args[1])
+			response = Get(args)
 		case INFO:
-			response = BuildResponse("role:"+ serverCon.role +"master_replid:" + serverCon.replicaId +"master_repl_offset:" + strconv.Itoa(serverCon.replicaOffSet))
-			fmt.Printf("response, %v",response)
+			response = Info(args, serverCon)
 		default: {
 			response = "-ERR unknown command\r\n"
 			fmt.Println("invalid command received:", command)
