@@ -38,3 +38,7 @@ func Get(args [] string) string {
 func Info(args []string, serverCon Server) string {
 	return BuildResponse("role:"+ serverCon.role +"master_replid:" + serverCon.replicaId +"master_repl_offset:" + strconv.Itoa(serverCon.replicaOffSet))
 }
+
+func Repl() string {
+	return "+OK\r\n"
+}
