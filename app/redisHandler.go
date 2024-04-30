@@ -42,3 +42,7 @@ func Info(args []string, serverCon Server) string {
 func ReplConf() string {
 	return "+OK\r\n"
 }
+
+func Psync(serverCon Server) string {
+	return BuildResponse("+FULLRESYNC" + serverCon.replicaId + strconv.Itoa(serverCon.replicaOffSet) +"\r\n")
+}

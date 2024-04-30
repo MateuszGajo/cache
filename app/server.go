@@ -20,6 +20,7 @@ const (
 	GET Commands = "GET"
 	INFO Commands = "INFO"
 	REPLCONF Commands = "REPLCONF"
+	PSYNC Commands = "PSYNC"
 )
 
 var CLRF string
@@ -212,6 +213,8 @@ func handleConenction(conn net.Conn, serverCon Server) {
 			response = Info(args, serverCon)
 		case REPLCONF:
 			response = ReplConf()
+		case PSYNC: 
+			response = Psync(serverCon)
 		default: {
 			response = "-ERR unknown command\r\n"
 			fmt.Println("invalid command received:", command)
