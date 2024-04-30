@@ -98,7 +98,7 @@ func handShake() error {
 	}
 
 	conn.Write([]byte("*3\r\n$8\r\nREPLCONF\r\n$4\r\ncapa\r\n$6\r\npsync2\r\n")) // same lets build it
-
+	args = readInput(conn)
 	if args[0] != "OK" {
 		fmt.Print("Response its invalid")
 		os.Exit(1)
