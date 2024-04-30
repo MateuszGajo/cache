@@ -213,9 +213,9 @@ func handleConenction(conn net.Conn, serverCon Server) {
 			response = Info(args, serverCon)
 		case REPLCONF:
 			response = ReplConf()
-			continue // we need to resolve this problem,
 		case PSYNC: 
 			response = Psync(conn, serverCon)
+			continue // we need to resolve this problem,
 		default: {
 			response = "-ERR unknown command\r\n"
 			fmt.Println("invalid command received:", command)
