@@ -1,10 +1,14 @@
 package main
 
 import (
+	"encoding/base64"
 	"fmt"
+	"net"
 	"os"
 	"strconv"
 )
+
+var EMPTY_RDB_FILE_BASE64 string = "UkVESVMwMDEx+glyZWRpcy12ZXIFNy4yLjD6CnJlZGlzLWJpdHPAQPoFY3RpbWXCbQi8ZfoIdXNlZC1tZW3CsMQQAPoIYW9mLWJhc2XAAP/wbjv+wP9aog=="
 
 func Ping() string {
 	return "+PONG\r\n"
@@ -43,6 +47,20 @@ func ReplConf() string {
 	return "+OK\r\n"
 }
 
-func Psync(serverCon Server) string {
-	return BuildResponse("+FULLRESYNC " + serverCon.replicaId +" "+ strconv.Itoa(serverCon.replicaOffSet) +"\r\n")
+func Psync(conn net.Conn,serverCon Server) string {
+	_, err := conn.Write([]byte(BuildResponse("+FULLRESYNC " + serverCon.replicaId +" "+ strconv.Itoa(serverCon.replicaOffSet) +"\r\n")))
+
+		if err != nil {
+			fmt.Println("Error writing to connection: ", err.Error())
+			os.Exit(1)
+		}
+	empty_rdb_file_bytes, _ := base64.StdEncoding.DecodeString(EMPTY_RDB_FILE_BASE64)
+	buff := []byte("$" + fmt.Sprint(len(empty_rdb_file_bytes)) + "\r\n")
+	buff = append(buff, empty_rdb_file_bytes...)
+	_, err  = conn.Write(buff)
+
+	if err != nil {
+		fmt.Println("Error writing to connection: ", err.Error())
+		os.Exit(1)
+	}
 }
