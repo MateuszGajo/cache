@@ -19,7 +19,7 @@ const (
 	SET Commands = "SET"
 	GET Commands = "GET"
 	INFO Commands = "INFO"
-	REPL Commands = "REPL"
+	REPLCONF Commands = "REPLCONF"
 )
 
 var CLRF string
@@ -210,8 +210,8 @@ func handleConenction(conn net.Conn, serverCon Server) {
 			response = Get(args)
 		case INFO:
 			response = Info(args, serverCon)
-		case REPL:
-			response = Repl()
+		case REPLCONF:
+			response = ReplConf()
 		default: {
 			response = "-ERR unknown command\r\n"
 			fmt.Println("invalid command received:", command)
