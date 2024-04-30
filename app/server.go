@@ -126,7 +126,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	defer ln.Close()
+	defer func(){
+		ln.Close() // is it closed?
+		fmt.Print("close")
+	}()
 
 	for {
 		conn, err := ln.Accept()
@@ -170,7 +173,10 @@ func readInput(conn net.Conn) []string {
 }
 
 func handleConenction(conn net.Conn, serverCon Server) {
-	defer conn.Close();
+	defer func() {
+		conn.Close(); // is it closed?
+		fmt.Print("close")
+	}()
 
 	for {
 		args := readInput(conn)
@@ -210,5 +216,4 @@ func handleConenction(conn net.Conn, serverCon Server) {
 			return
 		}
 	}
-	return;
 }
