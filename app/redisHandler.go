@@ -54,13 +54,14 @@ func Psync(conn net.Conn,serverCon Server) string {
 			fmt.Println("Error writing to connection: ", err.Error())
 			os.Exit(1)
 		}
-	empty_rdb_file_bytes, _ := base64.StdEncoding.DecodeString(EMPTY_RDB_FILE_BASE64)
-	buff := []byte("$" + fmt.Sprint(len(empty_rdb_file_bytes)) + "\r\n")
-	buff = append(buff, empty_rdb_file_bytes...)
+	emptyRdb, _ := base64.StdEncoding.DecodeString(EMPTY_RDB_FILE_BASE64)
+	buff := []byte("$" + fmt.Sprint(len(emptyRdb)) + "\r\n")
+	buff = append(buff, emptyRdb...)
 	_, err  = conn.Write(buff)
 
 	if err != nil {
 		fmt.Println("Error writing to connection: ", err.Error())
 		os.Exit(1)
 	}
+	return ""
 }
