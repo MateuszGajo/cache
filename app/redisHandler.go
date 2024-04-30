@@ -44,5 +44,5 @@ func ReplConf() string {
 }
 
 func Psync(serverCon Server) string {
-	return BuildResponse("+FULLRESYNC" + serverCon.replicaId + strconv.Itoa(serverCon.replicaOffSet) +"\r\n")
+	return BuildResponse("+FULLRESYNC " + serverCon.replicaId +" "+ strconv.Itoa(serverCon.replicaOffSet) +"\r\n")
 }
