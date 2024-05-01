@@ -72,7 +72,7 @@ type Server struct {
 // }
 
 
-func handShake() error {
+func handShake() net.Conn {
 	conn, err := net.Dial("tcp", replica.Address + ":" + replica.Port)
 
 	if err != nil {
@@ -84,7 +84,8 @@ func handShake() error {
 	conn.Write([]byte("*1\r\n$4\r\nping\r\n"))
 
 
-	args := readInput(conn)
+	inputComm := readInput(conn)
+	args := inputComm.commandStr
 
 	if args[0] != "PONG" {
 		fmt.Print("Response its invalid")
@@ -92,7 +93,8 @@ func handShake() error {
 	}
 
 	conn.Write([]byte("*3\r\n$8\r\nREPLCONF\r\n$14\r\nlistening-port\r\n$4\r\n" + strconv.Itoa((port)) + "\r\n")) // lets build it
-	args = readInput(conn)
+	inputComm = readInput(conn)
+	args = inputComm.commandStr
 
 	if args[0] != "OK" {
 		fmt.Print("Response its invalid")
@@ -100,7 +102,8 @@ func handShake() error {
 	}
 
 	conn.Write([]byte("*3\r\n$8\r\nREPLCONF\r\n$4\r\ncapa\r\n$6\r\npsync2\r\n")) // same lets build it
-	args = readInput(conn)
+	inputComm = readInput(conn)
+	args = inputComm.commandStr
 	if args[0] != "OK" {
 		fmt.Print("Response its invalid")
 		os.Exit(1)
@@ -109,7 +112,7 @@ func handShake() error {
 	conn.Write([]byte("*3\r\n$5\r\nPSYNC\r\n$1\r\n?\r\n$2\r\n-1\r\n"))
 		
 
-	return nil
+	return conn
 }
 
 func main() {
@@ -136,10 +139,10 @@ func main() {
 
 	for {
 		conn, err := ln.Accept()
-
+		var replConn net.Conn
 		if(replica != Replica {}) {
 			serverCon.role = "slave"
-			handShake()
+			replConn = handShake()
 		} else {
 			serverCon.replicaOffSet = 0
 			serverCon.replicaId = "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb"
@@ -150,12 +153,17 @@ func main() {
 			os.Exit(1)
 		}
 
-		go handleConenction(conn, serverCon)
+		go handleConenction(conn, serverCon, replConn)
 	}
 	
 }
 
-func readInput(conn net.Conn) []string {
+type CommandInput struct{
+	commandStr []string
+	commandByte []byte
+}
+
+func readInput(conn net.Conn) CommandInput{
 	buf := make([]byte, 1024)
 	n, err := conn.Read(buf)
 	if err != nil {
@@ -179,18 +187,31 @@ func readInput(conn net.Conn) []string {
 	}
 	fmt.Println(command)
 
-	return command
+	return CommandInput{
+		commandStr: command,
+		commandByte: buf,
+	}
 
 }
 
-func handleConenction(conn net.Conn, serverCon Server) {
+func propagte (command []byte, conn net.Conn) {
+	_, err := conn.Write([]byte(command))
+
+	if err != nil {
+		fmt.Println("Error writing to connection: ", err.Error())
+		return
+	}
+}
+
+func handleConenction(conn net.Conn, serverCon Server, replCon net.Conn) {
 	defer func() {
 		conn.Close(); // is it closed?
 		fmt.Print("close")
 	}()
 
 	for {
-		args := readInput(conn)
+		comamndInput := readInput(conn)
+		args := comamndInput.commandStr
 		fmt.Print(args)
 
 		if len(args) == 0 {
@@ -209,8 +230,10 @@ func handleConenction(conn net.Conn, serverCon Server) {
 			response = Echo(args)
 		case SET:	
 			response = Set(args)
+			propagte(comamndInput.commandByte, replCon)
 		case GET:
 			response = Get(args)
+			propagte(comamndInput.commandByte, replCon)
 		case INFO:
 			response = Info(args, serverCon)
 		case REPLCONF:
