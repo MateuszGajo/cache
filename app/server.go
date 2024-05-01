@@ -233,6 +233,7 @@ func handleConenction(conn net.Conn, serverCon Server, replCon net.Conn) {
 		case SET:	
 			response = Set(args)
 			fmt.Print(comamndInput)
+			fmt.Print(replCon)
 			propagte([]byte(comamndInput.commandByte), replCon)
 		case GET:
 			response = Get(args)
