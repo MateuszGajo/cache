@@ -195,6 +195,7 @@ func readInput(conn net.Conn) CommandInput{
 }
 
 func propagte (command []byte, conn net.Conn) {
+	fmt.Print("enter??")
 	fmt.Print(command)
 	_, err := conn.Write(command)
 
