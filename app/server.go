@@ -230,10 +230,10 @@ func handleConenction(conn net.Conn, serverCon Server, replCon net.Conn) {
 			response = Echo(args)
 		case SET:	
 			response = Set(args)
-			propagte(comamndInput.commandByte, replCon)
+			// propagte(comamndInput.commandByte, replCon)
 		case GET:
 			response = Get(args)
-			propagte(comamndInput.commandByte, replCon)
+			// propagte(comamndInput.commandByte, replCon)
 		case INFO:
 			response = Info(args, serverCon)
 		case REPLCONF:
