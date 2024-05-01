@@ -120,13 +120,7 @@ func main() {
 	serverCon := Server{
 		role: "master",
 	}
-	if(replica != Replica {}) {
-		serverCon.role = "slave"
-		handShake()
-	} else {
-		serverCon.replicaOffSet = 0
-		serverCon.replicaId = "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb"
-	}
+	
 	
 
 	ln, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
@@ -142,6 +136,14 @@ func main() {
 
 	for {
 		conn, err := ln.Accept()
+
+		if(replica != Replica {}) {
+			serverCon.role = "slave"
+			handShake()
+		} else {
+			serverCon.replicaOffSet = 0
+			serverCon.replicaId = "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb"
+		}
 	
 		if err != nil {
 			fmt.Println("Error accepting connection", err.Error())
@@ -201,7 +203,7 @@ func handleConenction(conn net.Conn, serverCon Server) {
 		var response string
 
 		switch(command) {
-		case PING:
+		case PING: // fix failing ping problem
 			response = Ping()
 		case ECHO:
 			response = Echo(args)
