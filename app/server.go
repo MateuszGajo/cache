@@ -195,7 +195,8 @@ func readInput(conn net.Conn) CommandInput{
 }
 
 func propagte (command []byte, conn net.Conn) {
-	_, err := conn.Write([]byte(command))
+	fmt.Print(command)
+	_, err := conn.Write(command)
 
 	if err != nil {
 		fmt.Println("Error writing to connection: ", err.Error())
