@@ -245,9 +245,9 @@ func handleConenction(conn net.Conn, serverCon Server) {
 			}
 		case INFO:
 			response = Info(args, serverCon)
-			replConn = conn
 		case REPLCONF:
 			response = ReplConf()
+			replConn = conn
 		case PSYNC: 
 			response = Psync(conn, serverCon)
 			continue // we need to resolve this problem,
