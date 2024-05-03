@@ -207,6 +207,7 @@ var replConn net.Conn
 func handleConenction(conn net.Conn, serverCon Server) {
 	defer func() {
 		conn.Close(); // is it closed?
+		replConn.Close()
 		fmt.Print("close")
 	}()
 	//we need to establish connection with replica
