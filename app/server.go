@@ -139,10 +139,9 @@ func main() {
 
 	for {
 		conn, err := ln.Accept()
-		var replConn net.Conn
 		if(replica != Replica {}) {
 			serverCon.role = "slave"
-			replConn = handShake()
+			handShake()
 		} else {
 			serverCon.replicaOffSet = 0
 			serverCon.replicaId = "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb"
