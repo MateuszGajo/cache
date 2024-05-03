@@ -247,7 +247,6 @@ func handleConenction(conn net.Conn, serverCon Server) {
 		case REPLCONF:
 			response = ReplConf()
 			replConn = conn
-			fmt.Print("replica connection", replConn)
 		case PSYNC: 
 			response = Psync(conn, serverCon)
 			continue // we need to resolve this problem,
