@@ -203,7 +203,7 @@ func propagte (command []byte, conn net.Conn) {
 		return
 	}
 }
-
+var replConn net.Conn
 func handleConenction(conn net.Conn, serverCon Server) {
 	defer func() {
 		conn.Close(); // is it closed?
@@ -211,12 +211,12 @@ func handleConenction(conn net.Conn, serverCon Server) {
 	}()
 	//we need to establish connection with replica
 
-	var replConn net.Conn
+
 
 	for {
 		comamndInput := readInput(conn)
 		args := comamndInput.commandStr
-		fmt.Print(args)
+		// fmt.Print(args)
 
 		if len(args) == 0 {
 			fmt.Println("No argument passed")
@@ -234,7 +234,6 @@ func handleConenction(conn net.Conn, serverCon Server) {
 			response = Echo(args)
 		case SET:	
 			response = Set(args)
-			fmt.Print(comamndInput)
 			if replConn != nil {
 			propagte([]byte(comamndInput.commandByte), replConn)
 			}
@@ -248,6 +247,7 @@ func handleConenction(conn net.Conn, serverCon Server) {
 		case REPLCONF:
 			response = ReplConf()
 			replConn = conn
+			fmt.Print("replica connection", replConn)
 		case PSYNC: 
 			response = Psync(conn, serverCon)
 			continue // we need to resolve this problem,
