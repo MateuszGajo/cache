@@ -153,7 +153,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		go handleConenction(conn, serverCon, replConn)
+		go handleConenction(conn, serverCon)
 	}
 	
 }
@@ -205,11 +205,14 @@ func propagte (command []byte, conn net.Conn) {
 	}
 }
 
-func handleConenction(conn net.Conn, serverCon Server, replCon net.Conn) {
+func handleConenction(conn net.Conn, serverCon Server) {
 	defer func() {
 		conn.Close(); // is it closed?
 		fmt.Print("close")
 	}()
+	//we need to establish connection with replica
+
+	var replConn net.Conn
 
 	for {
 		comamndInput := readInput(conn)
@@ -233,16 +236,17 @@ func handleConenction(conn net.Conn, serverCon Server, replCon net.Conn) {
 		case SET:	
 			response = Set(args)
 			fmt.Print(comamndInput)
-			if replCon != nil {
-			propagte([]byte(comamndInput.commandByte), replCon)
+			if replConn != nil {
+			propagte([]byte(comamndInput.commandByte), replConn)
 			}
 		case GET:
 			response = Get(args)
-			if replCon != nil {
-			propagte([]byte(comamndInput.commandByte), replCon)
+			if replConn != nil {
+				propagte([]byte(comamndInput.commandByte), replConn)
 			}
 		case INFO:
 			response = Info(args, serverCon)
+			replConn = conn
 		case REPLCONF:
 			response = ReplConf()
 		case PSYNC: 
