@@ -117,9 +117,9 @@ func handShake(){
 	inputComm = readInput(conn)
 	args = inputComm.commandStr
 
-	fmt.Print("response")
-	fmt.Println(inputComm.commandStr)
-	inputComm = readInput(conn)
+	// fmt.Print("response")
+	// fmt.Println(inputComm.commandStr)
+	// inputComm = readInput(conn)
 	// if args[0] != "FULLRESYNC" {
 	// 	fmt.Println("hello")
 	// 	fmt.Println(args[0])
