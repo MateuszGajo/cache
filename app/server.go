@@ -127,7 +127,7 @@ func handShake(){
 	// 	os.Exit(1)
 	// }
 
-	go handleConenction(MyConn{Conn: conn, ignoreWrites: false}, Server{})
+	// go handleConenction(MyConn{Conn: conn, ignoreWrites: false}, Server{})
 }
 
 func main() {
