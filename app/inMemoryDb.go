@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"sync"
 	"time"
 )
@@ -15,7 +16,7 @@ func handleRemove(key string) {
 	//TO DO
 }
 
-func handleSet(key, value string, expiryTime *int) string {
+func handleSet(key, value string, expiryTime *int) bool {
 	lock.Lock()
 	defer lock.Unlock()
 	if expiryTime != nil {
@@ -30,17 +31,20 @@ func handleSet(key, value string, expiryTime *int) string {
 		}
 	}
 
-	return "+OK\r\n"
+	return true
 }
 
 
-func handleGet(key string) string {
+func handleGet(key string) (string, error) {
 	defer lock.RUnlock()
 	lock.RLock()
 	r, ok := m[key]
-	if !ok || (time.Now().After(r.ExpireAt) && r.ExpireAt != time.Time{}) {
-		return "$-1\r\n"
+	if !ok {
+		return "", errors.New("Problem while saving value")
+	}
+	if (time.Now().After(r.ExpireAt) && r.ExpireAt != time.Time{}) {
+		return "", nil
 	}
 
-	return BuildResponse(r.Value)
+	return r.Value, nil
 }

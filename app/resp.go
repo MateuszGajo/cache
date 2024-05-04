@@ -13,7 +13,6 @@ func RESPSimpleString(input string) string {
 }
 
 func RESPArray(input string) []string {
-	fmt.Printf("\n %v \n", input)
 	args := strings.Split(input, CLRF)
 
 	fmt.Println(args)
@@ -28,7 +27,6 @@ func RESPArray(input string) []string {
 }
 
 func RESPBulkString(input string) []string {
-	fmt.Printf("\n %v \n", input)
 	args := strings.Split(input, CLRF)
 
 	fmt.Println(args)
@@ -42,18 +40,30 @@ func RESPBulkString(input string) []string {
 	return command
 }
 
-func BuildResponse(message string) string {
-	return fmt.Sprintf("$%v\r\n%s\r\n", len(message), message)
-   }
+func BuildSimpleString(message string) string {
+	return fmt.Sprintf("+%v%v", message, CLRF)
+}
+
+func BuildBulkString(message string) string {
+	return fmt.Sprintf("$%v%v%s%v", len(message), CLRF, message, CLRF)
+}
+
+func BuildNullBulkString() string {
+	return fmt.Sprintf("$-1%v", CLRF)
+}
+
+// func BuildResponse(message string) string {
+// 	return fmt.Sprintf("$%v\r\n%s\r\n", len(message), message) //fix this
+//    }
    
-   func BuildResponses(messages []string) string {
-	   res := fmt.Sprintf("*%v\r\n", len(messages))
+//    func BuildResponses(messages []string) string {
+// 	   res := fmt.Sprintf("*%v\r\n", len(messages))
    
-	   for _, val := range messages {
-		   res += BuildResponse(val)
-	   }
+// 	   for _, val := range messages {
+// 		   res += BuildResponse(val)
+// 	   }
    
-	   return res 
-   }
+// 	   return res 
+//    }
    
    

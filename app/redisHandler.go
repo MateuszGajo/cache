@@ -2,66 +2,97 @@ package main
 
 import (
 	"encoding/base64"
+	"errors"
 	"fmt"
-	"net"
-	"os"
 	"strconv"
 )
 
 var EMPTY_RDB_FILE_BASE64 string = "UkVESVMwMDEx+glyZWRpcy12ZXIFNy4yLjD6CnJlZGlzLWJpdHPAQPoFY3RpbWXCbQi8ZfoIdXNlZC1tZW3CsMQQAPoIYW9mLWJhc2XAAP/wbjv+wP9aog=="
 
-func Ping() string {
-	return "+PONG\r\n"
+func (conn MyConn) Ping() (err error) {
+	_, err = conn.Write([]byte(BuildSimpleString("PONG")))
+	return err
 }
 
-func Echo(args []string) string {
-	return BuildResponse(args[1])
+func (conn MyConn) Echo(args []string) (err error) {
+	msg := args[1]
+	_, err = conn.Write([]byte(BuildBulkString(msg)))
+	return err
 }
 
-func Set(args []string) string {
-	switch len(args) {
-	case 5: //THAT MAGIC VALUE FOR
-		// command := args[3]
-		timeMs, err := strconv.Atoi(args[4])
-		if err != nil {
-			fmt.Print("invalid time")
-			os.Exit(1)
-		}
-		return handleSet(args[1], args[2], &timeMs)
-	case 3:
-		return handleSet(args[1], args[2], nil)
+func (conn MyConn) Set(args []string) (err error) {
+	key := args[1]
+	value := args[2]
+	param, paramValue := "", ""
+	var opResult bool
+	if(len(args) >=4) {
+		param = args[3]
+		paramValue = args[4]
 	}
 
-	return ""
-}
-
-func Get(args [] string) string {
-	return handleGet(args[1])
-}
-
-func Info(args []string, serverCon Server) string {
-	return BuildResponse("role:"+ serverCon.role +"master_replid:" + serverCon.replicaId +"master_repl_offset:" + strconv.Itoa(serverCon.replicaOffSet))
-}
-
-func ReplConf() string {
-	return "+OK\r\n"
-}
-
-func Psync(conn net.Conn,serverCon Server) string {
-	_, err := conn.Write([]byte(BuildResponse("+FULLRESYNC " + serverCon.replicaId +" "+ strconv.Itoa(serverCon.replicaOffSet) +"\r\n")))
-
+	switch param {
+	case "px":
+		timeMs, err := strconv.Atoi(paramValue)
 		if err != nil {
-			fmt.Println("Error writing to connection: ", err.Error())
-			os.Exit(1)
+			return errors.New("Invalid time")
 		}
-	emptyRdb, _ := base64.StdEncoding.DecodeString(EMPTY_RDB_FILE_BASE64)
-	buff := []byte("$" + fmt.Sprint(len(emptyRdb)) + "\r\n")
-	buff = append(buff, emptyRdb...)
-	_, err  = conn.Write(buff)
+		opResult = handleSet(key, value, &timeMs)
+	default:
+		opResult = handleSet(key, value, nil)
+	}
+
+	if opResult {
+		conn.Write([]byte(BuildSimpleString("OK")))
+	} else {
+		return errors.New("Problem setting variable")
+	}
+
+	return nil;
+}
+
+func (conn MyConn) Get(args [] string) (err error) {
+	key := args[1]
+	var value, result string
+	value, err = handleGet(key)
 
 	if err != nil {
-		fmt.Println("Error writing to connection: ", err.Error())
-		os.Exit(1)
+		return err
 	}
-	return ""
+
+	if(value != "") {
+		result = BuildBulkString(value)
+	} else {
+		result = BuildNullBulkString()
+	}
+
+	_, err = conn.Write([]byte(result))
+	return err
+
+}
+
+func (conn MyConn) Info(args []string, serverCon Server) (err error) {
+	result := BuildBulkString(fmt.Sprintf("role:%vmaster_replid:%vmaster_repl_offset:%v",serverCon.role, serverCon.replicaId, strconv.Itoa(serverCon.replicaOffSet)))
+	_, err = conn.Write([]byte(result))
+	return err
+}
+
+func (conn MyConn)  ReplConf() (err error) {
+	result :=  BuildSimpleString("OK")
+	_, err = conn.Write([]byte(result))
+	return err
+}
+
+func (conn MyConn) Psync(serverCon Server) (err error) {
+	resync := fmt.Sprintf("+FULLRESYNC %v %v%v",serverCon.replicaId,strconv.Itoa(serverCon.replicaOffSet),CLRF)
+	_, err = conn.Write([]byte(resync))
+	if err != nil {
+		return err
+	}
+
+	emptyRdb, _ := base64.StdEncoding.DecodeString(EMPTY_RDB_FILE_BASE64)
+	rdbBuffer := []byte(fmt.Sprintf("$%v%v",fmt.Sprint(len(emptyRdb)), CLRF))
+	rdbBuffer = append(rdbBuffer, emptyRdb...)
+
+	_, err = conn.Write([]byte(rdbBuffer))
+	return err
 }
