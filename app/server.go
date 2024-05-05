@@ -213,9 +213,12 @@ func readInput(conn net.Conn) CommandInput{
 	input :=string(buf[:n])
 
 
-fmt.Println("hello")
-fmt.Println(input)
-fmt.Println(input[0])
+if(len(input) ==0){ 
+	return CommandInput{
+		commandStr: command,
+		commandByte: input,
+	}
+}
 	switch(input[0]) {
 	case 43:
 		command = append(command,RESPSimpleString(input))
