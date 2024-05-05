@@ -145,6 +145,7 @@ func main() {
 	
 
 	ln, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
+	fmt.Print(fmt.Printf("127.0.0.1:%d", port))
 	if err != nil {
 		fmt.Printf("Failed to run on port %d", port)
 		os.Exit(1)
@@ -247,10 +248,10 @@ func propagte (conn net.Conn, command []byte) {
 var whitelistProp = map[Commands]bool{"SET": true}
 
 func handleConenction(conn net.Conn, serverCon Server) {
-	// defer func() {
-	// 	conn.Close(); // is it closed?
-	// 	fmt.Print("close")
-	// }()
+	defer func() {
+		conn.Close(); // is it closed?
+		fmt.Print("close")
+	}()
 
 	for {
 		fmt.Println("read another")
