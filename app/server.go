@@ -50,18 +50,9 @@ type Replica struct {
 var port int
 var replica Replica
 
-func init(){
-	// flag.IntVar(&port, "port", 6379, "port to listen to")
-	flag.StringVar(&replica.Address, "replicaof", "", "master address")
-	flag.Parse()
-
-	if len(flag.Args()) > 0 {
-		// fmt.Println("port", port)
-		fmt.Println(flag.Args())
-		replica.Port = flag.Args()[0]
-
-	}
-}
+// func init(){
+	
+// }
 
 type Server struct {
 	role string
@@ -141,13 +132,22 @@ func main() {
 	// You can use print statements as follows for debugging, they'll be visible when running tests.
 	fmt.Println("Logs from your program will appear here!")
 
+	flag.IntVar(&port, "port", 6379, "port to listen to")
+	flag.StringVar(&replica.Address, "replicaof", "", "master address")
+	flag.Parse()
+
+	if len(flag.Args()) > 0 {
+		fmt.Println("port", port)
+		fmt.Println(flag.Args())
+		replica.Port = flag.Args()[0]
+
+	}
+
 	// Uncomment this block to pass the first stage
 	serverCon := Server{
 		role: "master",
 	}
-	flag.IntVar(&port, "port", 6379, "port to listen to")
-	flag.Parse()
-	fmt.Print(fmt.Print(port))
+		fmt.Print(fmt.Print(port))
 	
 
 	ln, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
