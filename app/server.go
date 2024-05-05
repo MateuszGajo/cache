@@ -73,7 +73,7 @@ type Server struct {
 // }
 
 
-func handShake(){
+func handShake() error{
 	fmt.Print("replica handshake?")
 	conn, err := net.Dial("tcp", replica.Address + ":" + replica.Port)
 
@@ -131,8 +131,9 @@ func handShake(){
 	// 	fmt.Print("Response its invalid")
 	// 	os.Exit(1)
 	// }
-
-	go handleConenction(conn, Server{})
+	defer conn.Close()
+return nil
+	// go handleConenction(conn, Server{})
 }
 
 func main() {
