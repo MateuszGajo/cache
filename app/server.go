@@ -145,6 +145,8 @@ func main() {
 	serverCon := Server{
 		role: "master",
 	}
+	flag.IntVar(&port, "port", 6379, "port to listen to")
+	flag.Parse()
 	fmt.Print(fmt.Print(port))
 	
 
