@@ -131,11 +131,14 @@ func handShake(){
 func main() {
 	// You can use print statements as follows for debugging, they'll be visible when running tests.
 	fmt.Println("Logs from your program will appear here!")
-	var test string
+	var test string ="6379"
 
 	flag.IntVar(&port, "port", 6379, "port to listen to")
 	flag.StringVar(&replica.Address, "replicaof", "", "master address")
 	flag.Parse()
+
+	fmt.Print(port)
+	fmt.Print(port == 6380)
 
 	if(port == 6380) {
 		test = "6380"
