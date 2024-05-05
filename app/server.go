@@ -135,7 +135,7 @@ func handShake(){
 
 	// defer conn.Close()
 
-	go handleConenction(conn, Server{})
+	// go handleConenction(conn, Server{})
 }
 
 func main() {
