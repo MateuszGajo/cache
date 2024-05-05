@@ -51,7 +51,7 @@ var port int
 var replica Replica
 
 func init(){
-	flag.IntVar(&port, "port", 6379, "port to listen to")
+	// flag.IntVar(&port, "port", 6379, "port to listen to")
 	flag.StringVar(&replica.Address, "replicaof", "", "master address")
 	flag.Parse()
 
