@@ -121,8 +121,8 @@ func handShake(){
 
 	fmt.Print("response")
 	fmt.Println(inputComm.commandStr)
-	inputComm = readInput(conn)
-	fmt.Print("i hope we are not here")
+	// inputComm = readInput(conn)
+	// fmt.Print("i hope we are not here")
 
 
 
@@ -204,7 +204,7 @@ func readInput(conn net.Conn) CommandInput{
 	n, err := conn.Read(buf)
 	if err != nil {
 		fmt.Print("problem reading", err)
-		// os.Exit(1)
+		os.Exit(1)
 	}
 
 	command := []string {}
