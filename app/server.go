@@ -77,7 +77,7 @@ func handShake(){
 	fmt.Print("replica handshake?")
 	conn, err := net.Dial("tcp", replica.Address + ":" + replica.Port)
 
-	defer conn.Close()
+	// defer conn.Close()
 
 	if err != nil {
 		fmt.Printf("cannot connect to %v:%v", replica.Address, replica.Port)
@@ -114,12 +114,14 @@ func handShake(){
 	}
 
 	conn.Write([]byte("*3"+CLRF+"$5"+CLRF+"PSYNC"+CLRF+"$1"+CLRF+"?"+CLRF+"$2"+CLRF+"-1"+CLRF))
-	// inputComm = readInput(conn)
-	// args = inputComm.commandStr
+	fmt.Println("sending psync")
+	inputComm = readInput(conn)
+	args = inputComm.commandStr
 
-	// fmt.Print("response")
-	// fmt.Println(inputComm.commandStr)
-	// inputComm = readInput(conn)
+	fmt.Print("response")
+	fmt.Println(inputComm.commandStr)
+	inputComm = readInput(conn)
+	fmt.Println("i hope we are not here")
 
 
 
@@ -130,7 +132,7 @@ func handShake(){
 	// 	os.Exit(1)
 	// }
 
-	// go handleConenction(MyConn{Conn: conn, ignoreWrites: false}, Server{})
+	go handleConenction(conn, Server{})
 }
 
 func main() {
@@ -173,7 +175,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		go handleConenction(MyConn{Conn: conn, ignoreWrites: false}, serverCon)
+		go handleConenction(conn, serverCon)
 	}
 	
 }
@@ -182,10 +184,10 @@ type CommandInput struct{
 	commandStr []string
 	commandByte string
 }
-type MyConn struct {
-	net.Conn
-	ignoreWrites bool
-}
+// type MyConn struct {
+// 	net.Conn
+// 	ignoreWrites bool
+// }
 
 func readInput(conn net.Conn) CommandInput{
 	buf := make([]byte, 1024)
@@ -223,29 +225,33 @@ fmt.Println(input[0])
 }
 var replConn net.Conn
 
-func (conn MyConn) propagte (command []byte) {
+func propagte (conn net.Conn, command []byte) {
+	fmt.Println("propagte")
 	if replConn == nil {
 		return
 	}
 	replConn.Write(command)
 }
 
-func (conn MyConn) Write(b []byte) (n int, err error) {
-	if conn.ignoreWrites {
-		return len(b), nil
-	}
-	return conn.Conn.Write(b)
-}
+// func (conn MyConn) Write(b []byte) (n int, err error) {
+// 	if conn.ignoreWrites {
+// 		return len(b), nil
+// 	}
+// 	fmt.Println("write")
+// 	fmt.Println(b)
+// 	return conn.Conn.Write(b)
+// }
 
 var whitelistProp = map[Commands]bool{"SET": true}
 
-func handleConenction(conn MyConn, serverCon Server) {
+func handleConenction(conn net.Conn, serverCon Server) {
 	defer func() {
 		conn.Close(); // is it closed?
 		fmt.Print("close")
 	}()
 
 	for {
+		fmt.Println("read another")
 		comamndInput := readInput(conn)
 		args := comamndInput.commandStr
 
@@ -258,39 +264,46 @@ func handleConenction(conn MyConn, serverCon Server) {
 
 		var err error
 
-		connectionFromMaster := strings.Contains(conn.RemoteAddr().String(), "6379") // fix port
-		if(connectionFromMaster) {
-			conn = MyConn{
-				ignoreWrites: true,
-				Conn: conn,
-			}
-		} else {
-			conn = MyConn{
-				ignoreWrites: false,
-				Conn: conn,
-			}
-		}
+		// connectionFromMaster := strings.Contains(conn.RemoteAddr().String(), "6379") // fix port
+		// if(connectionFromMaster) {
+		// 	conn = MyConn{
+		// 		ignoreWrites: true,
+		// 		Conn: conn,
+		// 	}
+		// } else {
+		// 	conn = MyConn{
+		// 		ignoreWrites: false,
+		// 		Conn: conn,
+		// 	}
+		// } // is it to much coping??
 
 		if whitelistProp[command] && replConn != nil {
-			conn.propagte([]byte(comamndInput.commandByte))
+			propagte(conn, []byte(comamndInput.commandByte))
 		}
 
 		switch(command) {
 		case PING:
-			err = conn.Ping()
+			fmt.Println("reading ping")
+			err = Ping(conn,) // test if reciver does not breaking something
 		case ECHO:
-			err = conn.Echo(args)
+			fmt.Println("reading echi")
+			err = Echo(conn,args)
 		case SET:	
-			err = conn.Set(args)
+		fmt.Println("reading set")
+			err = Set(conn,args)
 		case GET:
-			err = conn.Get(args)
+			fmt.Println("reading get")
+			err = Get(conn,args)
 		case INFO:
-			err = conn.Info(args, serverCon)
+			fmt.Println("reading info")
+			err = Info(conn,args, serverCon)
 		case REPLCONF:
-			err = conn.ReplConf()
+			fmt.Println("reading replconfg")
+			err = ReplConf(conn)
 			replConn = conn
 		case PSYNC: 
-			err = conn.Psync(serverCon)
+			fmt.Println("reading psync")
+			err = Psync(conn,serverCon)
 			replConn = conn
 		default: {
 			err = errors.New(fmt.Sprintf("invalid command received:%v", command))

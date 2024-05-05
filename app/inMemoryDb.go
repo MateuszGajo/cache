@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 )
@@ -25,6 +26,7 @@ func handleSet(key, value string, expiryTime *int) bool {
 			ExpireAt: time.Now().Add(time.Duration(*expiryTime) * time.Millisecond),
 		}
 	} else {
+		fmt.Print("save")
 		m[key] = CustomSetStore{
 			Value:    value,
 			ExpireAt: time.Time{},
@@ -40,7 +42,7 @@ func handleGet(key string) (string, error) {
 	lock.RLock()
 	r, ok := m[key]
 	if !ok {
-		return "", errors.New("Problem while saving value")
+		return "", errors.New("Problem while getting value")
 	}
 	if (time.Now().After(r.ExpireAt) && r.ExpireAt != time.Time{}) {
 		return "", nil
