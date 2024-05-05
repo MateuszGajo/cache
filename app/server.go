@@ -77,7 +77,7 @@ type Server struct {
 // }
 
 
-func handShake() error{
+func handShake(){
 	fmt.Print("replica handshake?")
 	fmt.Println("tcp", replica.Address + ":" + replica.Port)
 	conn, err := net.Dial("tcp", replica.Address + ":" + replica.Port)
@@ -135,9 +135,9 @@ func handShake() error{
 
 	defer conn.Close()
 
-	return nil;
+	// return nil;
 
-	// go handleConenction(conn, Server{})
+	go handleConenction(conn, Server{}) 
 }
 
 func main() {
@@ -258,8 +258,8 @@ var whitelistProp = map[Commands]bool{"SET": true}
 
 func handleConenction(conn net.Conn, serverCon Server) {
 	defer func() {
-		conn.Close(); // is it closed?
 		fmt.Print("close")
+		conn.Close(); // is it closed?
 	}()
 
 	for {
