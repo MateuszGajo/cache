@@ -158,7 +158,12 @@ func main() {
 	fmt.Print(replica != Replica{})
 
 	for {
+		fmt.Print("ddds1?")
 		conn, err := ln.Accept()
+		if err != nil {
+			fmt.Println("Error accepting connection", err.Error())
+			os.Exit(1)
+		}
 		fmt.Print("ddds?")
 		if(replica != Replica{}) {
 			fmt.Println("go for handshake??")
@@ -170,10 +175,7 @@ func main() {
 			serverCon.replicaId = "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb"
 		}
 	
-		if err != nil {
-			fmt.Println("Error accepting connection", err.Error())
-			os.Exit(1)
-		}
+	
 
 		go handleConenction(conn, serverCon)
 	}
