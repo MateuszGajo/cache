@@ -4,25 +4,24 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"net"
 	"strconv"
 	"strings"
 )
 
 var EMPTY_RDB_FILE_BASE64 string = "UkVESVMwMDEx+glyZWRpcy12ZXIFNy4yLjD6CnJlZGlzLWJpdHPAQPoFY3RpbWXCbQi8ZfoIdXNlZC1tZW3CsMQQAPoIYW9mLWJhc2XAAP/wbjv+wP9aog=="
 
-func Ping(conn net.Conn) (err error) {
+func (conn MyConn) Ping() (err error) {
 	_, err = conn.Write([]byte(BuildSimpleString("PONG")))
 	return err
 }
 
-func  Echo(conn net.Conn,args []string) (err error) {
+func (conn MyConn)   Echo(args []string) (err error) {
 	msg := args[1]
 	_, err = conn.Write([]byte(BuildBulkString(msg)))
 	return err
 }
 
-func Set(conn net.Conn,args []string) (err error) {
+func (conn MyConn)  Set(args []string) (err error) {
 	key := args[1]
 	value := args[2]
 	param, paramValue := "", ""
@@ -56,7 +55,7 @@ func Set(conn net.Conn,args []string) (err error) {
 	return nil;
 }
 
-func Get(conn net.Conn,args [] string) (err error) {
+func (conn MyConn)  Get(args [] string) (err error) {
 	key := args[1]
 	var value, result string
 	value, err = handleGet(key)
@@ -76,19 +75,19 @@ func Get(conn net.Conn,args [] string) (err error) {
 
 }
 
-func Info(conn net.Conn,args []string, serverCon Server) (err error) {
+func (conn MyConn)  Info(args []string, serverCon Server) (err error) {
 	result := BuildBulkString(fmt.Sprintf("role:%vmaster_replid:%vmaster_repl_offset:%v",serverCon.role, serverCon.replicaId, strconv.Itoa(serverCon.replicaOffSet)))
 	_, err = conn.Write([]byte(result))
 	return err
 }
 
-func ReplConf(conn net.Conn) (err error) {
+func (conn MyConn)  ReplConf() (err error) {
 	result :=  BuildSimpleString("OK")
 	_, err = conn.Write([]byte(result))
 	return err
 }
 
-func Psync(conn net.Conn, serverCon Server) (err error) {
+func (conn MyConn) Psync(serverCon Server) (err error) {
 	resync := fmt.Sprintf("+FULLRESYNC %v %v%v",serverCon.replicaId,strconv.Itoa(serverCon.replicaOffSet),CLRF)
 	fmt.Println("sedning resync")
 	_, err = conn.Write([]byte(resync))

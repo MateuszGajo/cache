@@ -86,10 +86,21 @@ func handShake(){
 		fmt.Printf("cannot connect to %v:%v", replica.Address, replica.Port)
 	}
 
-	conn.Write([]byte("*1"+CLRF+"$4"+CLRF+"ping"+CLRF))
+	_, err = conn.Write([]byte("*1"+CLRF+"$4"+CLRF+"ping"+CLRF))
+
+	if err != nil {
+		fmt.Print("1 error while pinging master replica", err)
+		conn.Close()
+		return
+	}
 
 
-	inputComm := readInput(conn)
+	inputComm, err := readInput(conn)
+	if err != nil {
+		fmt.Print("error while pinging master replica", err)
+		conn.Close()
+		return
+	}
 	args := inputComm.commandStr
 
 	if args[0] != "PONG" {
@@ -98,7 +109,12 @@ func handShake(){
 	}
 
 	conn.Write([]byte("*3"+CLRF+"$8"+CLRF+"REPLCONF"+CLRF+"$14"+CLRF+"listening-port"+CLRF+"$4"+CLRF + strconv.Itoa((port)) + CLRF)) // lets build it
-	inputComm = readInput(conn)
+	inputComm, err = readInput(conn)
+	if err != nil {
+		fmt.Print("error while replConf listening-port master replica")
+		conn.Close()
+		return
+	}
 	args = inputComm.commandStr
 
 	if args[0] != "OK" {
@@ -107,7 +123,12 @@ func handShake(){
 	}
 
 	conn.Write([]byte("*3"+CLRF+"$8"+CLRF+"REPLCONF"+CLRF+"$4"+CLRF+"capa"+CLRF+"$6"+CLRF+"psync2"+CLRF)) // same lets build it
-	inputComm = readInput(conn)
+	inputComm,err = readInput(conn)
+	if err != nil {
+		fmt.Print("error while replConf capa  master replica")
+		conn.Close()
+		return
+	}
 	args = inputComm.commandStr
 	if args[0] != "OK" {
 		fmt.Print("Response its invalid")
@@ -116,13 +137,22 @@ func handShake(){
 
 	conn.Write([]byte("*3"+CLRF+"$5"+CLRF+"PSYNC"+CLRF+"$1"+CLRF+"?"+CLRF+"$2"+CLRF+"-1"+CLRF))
 	fmt.Println("sending psync")
-	inputComm = readInput(conn)
+	inputComm, err = readInput(conn)
+	if err != nil {
+		fmt.Print("error while psync master replica")
+		conn.Close()
+		return
+	}
 	args = inputComm.commandStr
 
 	fmt.Print("response")
 	fmt.Println(inputComm.commandStr)
-	inputComm = readInput(conn)
-	fmt.Print("i hope we are not here")
+	inputComm,err = readInput(conn)
+	if err != nil {
+		fmt.Print("error while psync second read replica")
+		conn.Close()
+		return
+	}
 
 
 
@@ -137,7 +167,7 @@ func handShake(){
 
 	// return nil;
 
-	go handleConenction(conn, Server{}) 
+	go handleConenction(MyConn{Conn: conn, ignoreWrites: false}, Server{}) 
 }
 
 func main() {
@@ -160,8 +190,8 @@ func main() {
 	}
 
 	defer func(){
-		ln.Close() // is it closed?
 		fmt.Print("close")
+		ln.Close() // is it closed?
 	}()
 	fmt.Print(replica)
 	fmt.Print(replica != Replica{})
@@ -187,7 +217,7 @@ func main() {
 		fmt.Print("ddds?")
 	
 
-		go handleConenction(conn, serverCon)
+		go handleConenction(MyConn{Conn: conn, ignoreWrites: false}, serverCon)
 	}
 	
 }
@@ -196,29 +226,29 @@ type CommandInput struct{
 	commandStr []string
 	commandByte string
 }
-// type MyConn struct {
-// 	net.Conn
-// 	ignoreWrites bool
-// }
+type MyConn struct {
+	net.Conn
+	ignoreWrites bool
+}
 
-func readInput(conn net.Conn) CommandInput{
+func readInput(conn net.Conn) (CommandInput, error){
 	buf := make([]byte, 1024)
 	n, err := conn.Read(buf)
 	if err != nil {
-		fmt.Print("problem reading", err)
-		// os.Exit(1)
+		fmt.Println("error????")
+		return CommandInput{}, err
 	}
 
 	command := []string {}
 	input :=string(buf[:n])
 
 
-if(len(input) ==0){ 
-	return CommandInput{
-		commandStr: command,
-		commandByte: input,
+	if(len(input) ==0){ 
+		return CommandInput{
+			commandStr: command,
+			commandByte: input,
+		}, nil
 	}
-}
 	switch(input[0]) {
 	case 43:
 		command = append(command,RESPSimpleString(input))
@@ -228,14 +258,13 @@ if(len(input) ==0){
 		command = RESPArray(input)
 	default:
 		fmt.Print("Unknown RESP enconfing")
-		os.Exit(1)
 	}
 
 
 	return CommandInput{
 		commandStr: command,
 		commandByte: input,
-	}
+	}, nil
 
 }
 var replConn net.Conn
@@ -248,39 +277,38 @@ func propagte (conn net.Conn, command []byte) {
 	replConn.Write(command)
 }
 
-// func (conn MyConn) Write(b []byte) (n int, err error) {
-// 	if conn.ignoreWrites {
-// 		return len(b), nil
-// 	}
-// 	fmt.Println("write")
-// 	fmt.Println(b)
-// 	return conn.Conn.Write(b)
-// }
+func (conn MyConn) Write(b []byte) (n int, err error) {
+	if conn.ignoreWrites {
+		return len(b), nil
+	}
+	fmt.Println("write")
+	fmt.Println(b)
+	return conn.Conn.Write(b)
+}
 
 var whitelistProp = map[Commands]bool{"SET": true}
 
-func handleConenction(conn net.Conn, serverCon Server) {
-	defer func(conn net.Conn) {
-		fmt.Print("closing conn")
-		err := conn.Close()
-		if err != nil {
-			fmt.Println(err)
-		}
+func handleConenction(conn MyConn, serverCon Server) {
+	defer func(conn MyConn) {
+		fmt.Print("lets close it")
+		conn.Close()
 	}(conn)
 
 	for {
 		fmt.Println("read another")
-		comamndInput := readInput(conn)
+		comamndInput, err := readInput(conn)
+		if err != nil {
+			fmt.Println("Error while reaidng", err)
+			break;
+		}
 		args := comamndInput.commandStr
 
 		if len(args) == 0 {
 			fmt.Println("No argument passed")
-			continue;
+			break;
 		}
 
 		command := Commands(strings.ToUpper(args[0]))
-
-		var err error
 
 		// connectionFromMaster := strings.Contains(conn.RemoteAddr().String(), "6379") // fix port
 		// if(connectionFromMaster) {
@@ -302,26 +330,26 @@ func handleConenction(conn net.Conn, serverCon Server) {
 		switch(command) {
 		case PING:
 			fmt.Println("reading ping")
-			err = Ping(conn,) // test if reciver does not breaking something
+			err = conn.Ping() // test if reciver does not breaking something
 		case ECHO:
 			fmt.Println("reading echi")
-			err = Echo(conn,args)
+			err = conn.Echo(args)
 		case SET:	
 		fmt.Println("reading set")
-			err = Set(conn,args)
+			err = conn.Set(args)
 		case GET:
 			fmt.Println("reading get")
-			err = Get(conn,args)
+			err = conn.Get(args)
 		case INFO:
 			fmt.Println("reading info")
-			err = Info(conn,args, serverCon)
+			err = conn.Info(args, serverCon)
 		case REPLCONF:
 			fmt.Println("reading replconfg")
-			err = ReplConf(conn)
+			err = conn.ReplConf()
 			replConn = conn
 		case PSYNC: 
 			fmt.Println("reading psync")
-			err = Psync(conn,serverCon)
+			err = conn.Psync(serverCon)
 			replConn = conn
 		default: {
 			err = errors.New(fmt.Sprintf("invalid command received:%v", command))
@@ -332,7 +360,7 @@ func handleConenction(conn net.Conn, serverCon Server) {
 		
 		if err != nil {
 			fmt.Println("Error writing to connection: ", err.Error())
-			return
+			break;
 		}
 	}
 }
