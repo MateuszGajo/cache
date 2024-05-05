@@ -79,6 +79,7 @@ type Server struct {
 
 func handShake(){
 	fmt.Print("replica handshake?")
+	fmt.Println("tcp", replica.Address + ":" + replica.Port)
 	conn, err := net.Dial("tcp", replica.Address + ":" + replica.Port)
 
 	if err != nil {
