@@ -258,6 +258,7 @@ var whitelistProp = map[Commands]bool{"SET": true}
 
 func handleConenction(conn net.Conn, serverCon Server) {
 	defer func(conn net.Conn) {
+		fmt.Print("closing conn")
 		err := conn.Close()
 		if err != nil {
 			fmt.Println(err)
