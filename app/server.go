@@ -121,8 +121,8 @@ func handShake() error{
 
 	fmt.Print("response")
 	fmt.Println(inputComm.commandStr)
-	// inputComm = readInput(conn)
-	// fmt.Print("i hope we are not here")
+	inputComm = readInput(conn)
+	fmt.Print("i hope we are not here")
 
 
 
