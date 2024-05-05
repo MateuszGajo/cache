@@ -150,10 +150,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	// defer func(){
-	// 	ln.Close() // is it closed?
-	// 	fmt.Print("close")
-	// }()
+	defer func(){
+		ln.Close() // is it closed?
+		fmt.Print("close")
+	}()
 	fmt.Print(replica)
 	fmt.Print(replica != Replica{})
 
@@ -247,10 +247,10 @@ func propagte (conn net.Conn, command []byte) {
 var whitelistProp = map[Commands]bool{"SET": true}
 
 func handleConenction(conn net.Conn, serverCon Server) {
-	defer func() {
-		conn.Close(); // is it closed?
-		fmt.Print("close")
-	}()
+	// defer func() {
+	// 	conn.Close(); // is it closed?
+	// 	fmt.Print("close")
+	// }()
 
 	for {
 		fmt.Println("read another")
