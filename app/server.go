@@ -257,10 +257,12 @@ func propagte (conn net.Conn, command []byte) {
 var whitelistProp = map[Commands]bool{"SET": true}
 
 func handleConenction(conn net.Conn, serverCon Server) {
-	defer func() {
-		fmt.Print("close")
-		conn.Close(); // is it closed?
-	}()
+	defer func(conn net.Conn) {
+		err := conn.Close()
+		if err != nil {
+			fmt.Println(err)
+		}
+	}(conn)
 
 	for {
 		fmt.Println("read another")
