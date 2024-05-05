@@ -133,7 +133,7 @@ func handShake(){
 	// 	os.Exit(1)
 	// }
 
-	defer conn.Close()
+	// defer conn.Close()
 
 	// return nil;
 
