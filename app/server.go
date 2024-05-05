@@ -206,7 +206,7 @@ func readInput(conn net.Conn) CommandInput{
 	n, err := conn.Read(buf)
 	if err != nil {
 		fmt.Print("problem reading", err)
-		os.Exit(1)
+		// os.Exit(1)
 	}
 
 	command := []string {}
