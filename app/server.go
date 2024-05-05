@@ -131,6 +131,7 @@ func handShake(){
 func main() {
 	// You can use print statements as follows for debugging, they'll be visible when running tests.
 	fmt.Println("Logs from your program will appear here!")
+	var aa int
 
 	flag.IntVar(&port, "port", 6379, "port to listen to")
 	flag.StringVar(&replica.Address, "replicaof", "", "master address")
@@ -138,6 +139,7 @@ func main() {
 
 	if len(flag.Args()) > 0 {
 		fmt.Println("port", port)
+		aa = port
 		fmt.Println(flag.Args())
 		replica.Port = flag.Args()[0]
 
@@ -147,11 +149,11 @@ func main() {
 	serverCon := Server{
 		role: "master",
 	}
-		fmt.Print(fmt.Print(port))
+		fmt.Print(fmt.Print(aa))
 	
 
-	ln, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
-	fmt.Print(fmt.Printf("127.0.0.1:%d", port))
+	ln, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", aa))
+	fmt.Print(fmt.Printf("127.0.0.1:%d", aa))
 
 	if err != nil {
 		fmt.Printf("Failed to run on port %d", port)
