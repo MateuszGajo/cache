@@ -52,7 +52,7 @@ var replica Replica
 
 func init(){
 	flag.IntVar(&port, "port", 6379, "port to listen to")
-	flag.StringVar(&replica.Address, "replicaof", "127.0.0.1", "master address")
+	flag.StringVar(&replica.Address, "replicaof", "localhost", "master address")
 	flag.Parse()
 
 	// if len(flag.Args()) > 0 {
