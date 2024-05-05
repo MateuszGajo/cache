@@ -55,12 +55,12 @@ func init(){
 	flag.StringVar(&replica.Address, "replicaof", "", "master address")
 	flag.Parse()
 
-	// if len(flag.Args()) > 0 {
-	// 	fmt.Println("port", port)
-	// 	fmt.Println(flag.Args())
-	// 	replica.Port = flag.Args()[0]
+	if len(flag.Args()) > 0 {
+		fmt.Println("port", port)
+		fmt.Println(flag.Args())
+		replica.Port = flag.Args()[0]
 
-	// }
+	}
 }
 
 type Server struct {
@@ -163,6 +163,17 @@ func main() {
 	fmt.Print(replica)
 	fmt.Print(replica != Replica{})
 
+	if(replica != Replica{}) {
+		fmt.Println("go for handshake??")
+		serverCon.role = "slave"
+		handShake()
+	} else {
+		fmt.Println("halo")
+		serverCon.replicaOffSet = 0
+		serverCon.replicaId = "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb"
+	}
+
+
 	for {
 		fmt.Print("ddds1?")
 		conn, err := ln.Accept()
@@ -171,16 +182,6 @@ func main() {
 			os.Exit(1)
 		}
 		fmt.Print("ddds?")
-		if(replica != Replica{}) {
-			fmt.Println("go for handshake??")
-			serverCon.role = "slave"
-			handShake()
-		} else {
-			fmt.Println("halo")
-			serverCon.replicaOffSet = 0
-			serverCon.replicaId = "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb"
-		}
-	
 	
 
 		go handleConenction(conn, serverCon)
