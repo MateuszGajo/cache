@@ -158,8 +158,8 @@ func main() {
 		fmt.Print(fmt.Print(test))
 	
 
-	ln, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", test))
-	fmt.Print(fmt.Printf("127.0.0.1:%d", test))
+	ln, err := net.Listen("tcp", "127.0.0.1:" + test)
+	fmt.Print(fmt.Printf( "127.0.0.1:" + test))
 
 	if err != nil {
 		fmt.Printf("Failed to run on port %d", port)
