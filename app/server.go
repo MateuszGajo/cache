@@ -73,17 +73,13 @@ type Server struct {
 // }
 
 
-func handShake() error{
+func handShake(){
 	fmt.Print("replica handshake?")
 	conn, err := net.Dial("tcp", replica.Address + ":" + replica.Port)
-
-	// defer conn.Close()
 
 	if err != nil {
 		fmt.Printf("cannot connect to %v:%v", replica.Address, replica.Port)
 	}
-
-	// defer conn.Close()
 
 	conn.Write([]byte("*1"+CLRF+"$4"+CLRF+"ping"+CLRF))
 
@@ -114,14 +110,14 @@ func handShake() error{
 	}
 
 	conn.Write([]byte("*3"+CLRF+"$5"+CLRF+"PSYNC"+CLRF+"$1"+CLRF+"?"+CLRF+"$2"+CLRF+"-1"+CLRF))
-	// fmt.Println("sending psync")
-	// inputComm = readInput(conn)
-	// args = inputComm.commandStr
+	fmt.Println("sending psync")
+	inputComm = readInput(conn)
+	args = inputComm.commandStr
 
-	// fmt.Print("response")
-	// fmt.Println(inputComm.commandStr)
-	// inputComm = readInput(conn)
-	// fmt.Println("i hope we are not here")
+	fmt.Print("response")
+	fmt.Println(inputComm.commandStr)
+	inputComm = readInput(conn)
+	fmt.Print("i hope we are not here")
 
 
 
@@ -131,9 +127,10 @@ func handShake() error{
 	// 	fmt.Print("Response its invalid")
 	// 	os.Exit(1)
 	// }
-	defer conn.Close()
-return nil
-	// go handleConenction(conn, Server{})
+
+	// defer conn.Close()
+
+	go handleConenction(conn, Server{})
 }
 
 func main() {
@@ -162,11 +159,13 @@ func main() {
 
 	for {
 		conn, err := ln.Accept()
+		fmt.Print("ddds?")
 		if(replica != Replica{}) {
-			fmt.Print("go for handshake??")
+			fmt.Println("go for handshake??")
 			serverCon.role = "slave"
 			handShake()
 		} else {
+			fmt.Println("halo")
 			serverCon.replicaOffSet = 0
 			serverCon.replicaId = "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb"
 		}
@@ -175,7 +174,7 @@ func main() {
 			fmt.Println("Error accepting connection", err.Error())
 			os.Exit(1)
 		}
-		defer conn.Close()
+
 		go handleConenction(conn, serverCon)
 	}
 	
@@ -318,5 +317,4 @@ func handleConenction(conn net.Conn, serverCon Server) {
 			return
 		}
 	}
-
 }
