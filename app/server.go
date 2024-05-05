@@ -275,7 +275,7 @@ func handleConenction(conn net.Conn, serverCon Server) {
 
 		if len(args) == 0 {
 			fmt.Println("No argument passed")
-			os.Exit(1)
+			continue;
 		}
 
 		command := Commands(strings.ToUpper(args[0]))
