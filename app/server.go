@@ -150,10 +150,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	defer func(){
-		ln.Close() // is it closed?
-		fmt.Print("close")
-	}()
+	// defer func(){
+	// 	ln.Close() // is it closed?
+	// 	fmt.Print("close")
+	// }()
 	fmt.Print(replica)
 	fmt.Print(replica != Replica{})
 
