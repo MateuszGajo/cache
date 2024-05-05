@@ -145,12 +145,12 @@ func main() {
 	serverCon := Server{
 		role: "master",
 	}
-	
+	fmt.Print(fmt.Print(port))
 	
 
 	ln, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
 	fmt.Print(fmt.Printf("127.0.0.1:%d", port))
-	fmt.Print(fmt.Print(port))
+
 	if err != nil {
 		fmt.Printf("Failed to run on port %d", port)
 		os.Exit(1)
