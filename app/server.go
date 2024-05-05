@@ -56,7 +56,7 @@ func init(){
 	flag.Parse()
 
 	if len(flag.Args()) > 0 {
-		fmt.Println("port", port)
+		// fmt.Println("port", port)
 		fmt.Println(flag.Args())
 		replica.Port = flag.Args()[0]
 
