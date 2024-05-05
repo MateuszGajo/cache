@@ -136,10 +136,11 @@ func main() {
 	flag.IntVar(&port, "port", 6379, "port to listen to")
 	flag.StringVar(&replica.Address, "replicaof", "", "master address")
 	flag.Parse()
+	fmt.Println("port", port)
+		aa = port
 
 	if len(flag.Args()) > 0 {
-		fmt.Println("port", port)
-		aa = port
+		
 		fmt.Println(flag.Args())
 		replica.Port = flag.Args()[0]
 
