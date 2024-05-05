@@ -52,15 +52,15 @@ var replica Replica
 
 func init(){
 	flag.IntVar(&port, "port", 6379, "port to listen to")
-	flag.StringVar(&replica.Address, "replicaof", "", "master address")
+	// flag.StringVar(&replica.Address, "replicaof", "", "master address")
 	flag.Parse()
 
-	if len(flag.Args()) > 0 {
-		fmt.Println("port", port)
-		fmt.Println(flag.Args())
-		replica.Port = flag.Args()[0]
+	// if len(flag.Args()) > 0 {
+	// 	fmt.Println("port", port)
+	// 	fmt.Println(flag.Args())
+	// 	replica.Port = flag.Args()[0]
 
-	}
+	// }
 }
 
 type Server struct {
