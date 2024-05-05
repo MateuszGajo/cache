@@ -50,9 +50,18 @@ type Replica struct {
 var port int
 var replica Replica
 
-// func init(){
-	
-// }
+func init(){
+	flag.IntVar(&port, "port", 6379, "port to listen to")
+	flag.StringVar(&replica.Address, "replicaof", "", "master address")
+	flag.Parse()
+
+	if len(flag.Args()) > 0 {
+		fmt.Println("port", port)
+		fmt.Println(flag.Args())
+		replica.Port = flag.Args()[0]
+
+	}
+}
 
 type Server struct {
 	role string
@@ -131,35 +140,16 @@ func handShake(){
 func main() {
 	// You can use print statements as follows for debugging, they'll be visible when running tests.
 	fmt.Println("Logs from your program will appear here!")
-	var test string ="6379"
-
-	flag.IntVar(&port, "port", 6379, "port to listen to")
-	flag.StringVar(&replica.Address, "replicaof", "", "master address")
-	flag.Parse()
-
-	fmt.Print(port)
-	fmt.Print(port == 6380)
-
-	if(port == 6380) {
-		test = "6380"
-	}
-
-	if len(flag.Args()) > 0 {
-		fmt.Println("port", port)
-		fmt.Println(flag.Args())
-		replica.Port = flag.Args()[0]
-
-	}
 
 	// Uncomment this block to pass the first stage
 	serverCon := Server{
 		role: "master",
 	}
-		fmt.Print(fmt.Print(test))
+		fmt.Print(fmt.Print(port))
 	
 
-	ln, err := net.Listen("tcp", "127.0.0.1:" + test)
-	fmt.Print(fmt.Printf( "127.0.0.1:" + test))
+	ln, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
+	fmt.Print(fmt.Printf("127.0.0.1:%d", port))
 
 	if err != nil {
 		fmt.Printf("Failed to run on port %d", port)
