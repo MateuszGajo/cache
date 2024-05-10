@@ -30,6 +30,8 @@ func (conn MyConn)  Set(args []string) (err error) {
 		param = args[3]
 		paramValue = args[4]
 	}
+	fmt.Print("value")
+	fmt.Print(value)
 
 	switch param {
 	case "px":
@@ -65,6 +67,8 @@ func (conn MyConn)  Get(args [] string) (err error) {
 	}
 
 	if(value != "") {
+		fmt.Print("value")
+		fmt.Print(value)
 		result = BuildBulkString(value)
 	} else {
 		result = BuildNullBulkString()

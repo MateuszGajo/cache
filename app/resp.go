@@ -41,6 +41,7 @@ func RESPBulkString(input string) []string {
 }
 
 func BuildSimpleString(message string) string {
+	fmt.Print("Hello")
 	return fmt.Sprintf("+%v%v", message, CLRF)
 }
 
@@ -52,18 +53,4 @@ func BuildNullBulkString() string {
 	return fmt.Sprintf("$-1%v", CLRF)
 }
 
-// func BuildResponse(message string) string {
-// 	return fmt.Sprintf("$%v\r\n%s\r\n", len(message), message) //fix this
-//    }
-   
-//    func BuildResponses(messages []string) string {
-// 	   res := fmt.Sprintf("*%v\r\n", len(messages))
-   
-// 	   for _, val := range messages {
-// 		   res += BuildResponse(val)
-// 	   }
-   
-// 	   return res 
-//    }
-   
    

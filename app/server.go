@@ -235,13 +235,11 @@ func readInput(conn net.Conn) (CommandInput, error){
 	buf := make([]byte, 1024)
 	n, err := conn.Read(buf)
 	if err != nil {
-		fmt.Println("error????")
 		return CommandInput{}, err
 	}
 
 	command := []string {}
 	input :=string(buf[:n])
-
 
 	if(len(input) ==0){ 
 		return CommandInput{
@@ -260,7 +258,6 @@ func readInput(conn net.Conn) (CommandInput, error){
 		fmt.Print("Unknown RESP enconfing")
 	}
 
-
 	return CommandInput{
 		commandStr: command,
 		commandByte: input,
@@ -268,6 +265,8 @@ func readInput(conn net.Conn) (CommandInput, error){
 
 }
 var replConn net.Conn
+
+
 
 func propagte (conn net.Conn, command []byte) {
 	fmt.Println("propagte")
@@ -287,12 +286,16 @@ func (conn MyConn) Write(b []byte) (n int, err error) {
 }
 
 var whitelistProp = map[Commands]bool{"SET": true}
+var conCOunt = 0
 
 func handleConenction(conn MyConn, serverCon Server) {
 	defer func(conn MyConn) {
 		fmt.Print("lets close it")
 		conn.Close()
 	}(conn)
+	conCOunt++;
+	fmt.Println("number of connections")
+	fmt.Println(conCOunt)
 
 	for {
 		fmt.Println("read another")
@@ -310,45 +313,25 @@ func handleConenction(conn MyConn, serverCon Server) {
 
 		command := Commands(strings.ToUpper(args[0]))
 
-		// connectionFromMaster := strings.Contains(conn.RemoteAddr().String(), "6379") // fix port
-		// if(connectionFromMaster) {
-		// 	conn = MyConn{
-		// 		ignoreWrites: true,
-		// 		Conn: conn,
-		// 	}
-		// } else {
-		// 	conn = MyConn{
-		// 		ignoreWrites: false,
-		// 		Conn: conn,
-		// 	}
-		// } // is it to much coping??
-
 		if whitelistProp[command] && replConn != nil {
 			propagte(conn, []byte(comamndInput.commandByte))
 		}
 
 		switch(command) {
 		case PING:
-			fmt.Println("reading ping")
-			err = conn.Ping() // test if reciver does not breaking something
+			err = conn.Ping()
 		case ECHO:
-			fmt.Println("reading echi")
 			err = conn.Echo(args)
 		case SET:	
-		fmt.Println("reading set")
 			err = conn.Set(args)
 		case GET:
-			fmt.Println("reading get")
 			err = conn.Get(args)
 		case INFO:
-			fmt.Println("reading info")
 			err = conn.Info(args, serverCon)
 		case REPLCONF:
-			fmt.Println("reading replconfg")
 			err = conn.ReplConf()
 			replConn = conn
 		case PSYNC: 
-			fmt.Println("reading psync")
 			err = conn.Psync(serverCon)
 			replConn = conn
 		default: {
