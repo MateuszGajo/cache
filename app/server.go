@@ -264,7 +264,7 @@ func readInput(conn net.Conn) (CommandInput, error){
 	}, nil
 
 }
-var replConn net.Conn
+var replConn []net.Conn
 
 
 
@@ -273,7 +273,9 @@ func propagte (conn net.Conn, command []byte) {
 	if replConn == nil {
 		return
 	}
-	replConn.Write(command)
+	for _, v := range replConn {
+		v.Write(command)
+	}
 }
 
 func (conn MyConn) Write(b []byte) (n int, err error) {
@@ -330,10 +332,9 @@ func handleConenction(conn MyConn, serverCon Server) {
 			err = conn.Info(args, serverCon)
 		case REPLCONF:
 			err = conn.ReplConf()
-			replConn = conn
 		case PSYNC: 
 			err = conn.Psync(serverCon)
-			replConn = conn
+			replConn = append(replConn, conn)
 		default: {
 			err = errors.New(fmt.Sprintf("invalid command received:%v", command))
 			fmt.Println("invalid command received:", command)
