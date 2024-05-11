@@ -151,12 +151,12 @@ func handShake(){
 
 	fmt.Print("response")
 	fmt.Println(inputComm.commandStr)
-	inputComm,err = readInput(conn)
-	if err != nil {
-		fmt.Printf("error while psync second read replica %v", err)
-		conn.Close()
-		return
-	}
+	// inputComm,err = readInput(conn)
+	// if err != nil {
+	// 	fmt.Printf("error while psync second read replica %v", err)
+	// 	conn.Close()
+	// 	return
+	// }
 	// fmt.Print("after handshake....")
 	// fmt.Print(inputComm.commandStr)
 
