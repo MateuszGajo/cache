@@ -154,6 +154,8 @@ func handShake(){
 		conn.Close()
 		return
 	}
+	fmt.Print("after handshake....")
+	fmt.Print(inputComm.commandStr)
 
 
 
