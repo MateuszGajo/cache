@@ -4,6 +4,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"math/rand/v2"
 	"net"
 	"os"
 	"runtime"
@@ -167,7 +168,7 @@ func handShake(){
 
 	// return nil;
 
-	go handleConenction(MyConn{Conn: conn, ignoreWrites: false, ID: conn.LocalAddr().String()}, Server{}) 
+	go handleConenction(MyConn{Conn: conn, ignoreWrites: false, ID: strconv.Itoa(rand.IntN(100))}, Server{}) 
 }
 
 func main() {
@@ -219,7 +220,7 @@ func main() {
 		fmt.Print("ddds?")
 	
 
-		go handleConenction(MyConn{Conn: conn, ignoreWrites: false, ID: conn.LocalAddr().String() }, serverCon)
+		go handleConenction(MyConn{Conn: conn, ignoreWrites: false, ID: strconv.Itoa(rand.IntN(100)) }, serverCon)
 	}
 	
 }
