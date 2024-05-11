@@ -73,7 +73,7 @@ func (conn MyConn)  Get(args [] string) (err error) {
 	}
 
 	fmt.Println("what are we sending?")
-	fmt.Println(value)
+	fmt.Println(result)
 
 	_, err = conn.Write([]byte(result))
 	return err
