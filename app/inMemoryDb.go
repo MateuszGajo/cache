@@ -20,6 +20,8 @@ func handleSet(key, value string, expiryTime *int) bool {
 	lock.Lock()
 	defer lock.Unlock()
 	if expiryTime != nil {
+		fmt.Println("expirt time no empty")
+		fmt.Println(expiryTime)
 		m[key] = CustomSetStore{
 			Value:    value,
 			ExpireAt: time.Now().Add(time.Duration(*expiryTime) * time.Millisecond),
