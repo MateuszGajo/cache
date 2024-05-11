@@ -167,10 +167,11 @@ func handShake(){
 
 	// return nil;
 
-	go handleConenction(MyConn{Conn: conn, ignoreWrites: false}, Server{}) 
+	go handleConenction(MyConn{Conn: conn, ignoreWrites: false, ID: replica.Port}, Server{}) 
 }
 
 func main() {
+	fmt.Print(os.Args)
 	// You can use print statements as follows for debugging, they'll be visible when running tests.
 	fmt.Println("Logs from your program will appear here!")
 
@@ -197,6 +198,7 @@ func main() {
 	fmt.Print(replica != Replica{})
 
 	if(replica != Replica{}) {
+		fmt.Print("replica")
 		fmt.Println("go for handshake??")
 		serverCon.role = "slave"
 		handShake()
@@ -217,7 +219,7 @@ func main() {
 		fmt.Print("ddds?")
 	
 
-		go handleConenction(MyConn{Conn: conn, ignoreWrites: false}, serverCon)
+		go handleConenction(MyConn{Conn: conn, ignoreWrites: false, ID: strconv.Itoa(port) }, serverCon)
 	}
 	
 }
@@ -227,6 +229,7 @@ type CommandInput struct{
 	commandByte string
 }
 type MyConn struct {
+	ID string
 	net.Conn
 	ignoreWrites bool
 }
@@ -267,14 +270,18 @@ func readInput(conn net.Conn) (CommandInput, error){
 var replConn []net.Conn
 
 
-
 func propagte (conn net.Conn, command []byte) {
 	fmt.Println("propagte")
 	if replConn == nil {
 		return
 	}
+	fmt.Print(replConn)
 	for _, v := range replConn {
-		v.Write(command)
+		_, err := v.Write(command)
+
+		if err != nil {
+			fmt.Print("write error")
+		}
 	}
 }
 
@@ -282,22 +289,17 @@ func (conn MyConn) Write(b []byte) (n int, err error) {
 	if conn.ignoreWrites {
 		return len(b), nil
 	}
-	fmt.Println("write")
-	fmt.Println(b)
 	return conn.Conn.Write(b)
 }
 
 var whitelistProp = map[Commands]bool{"SET": true}
-var conCOunt = 0
 
 func handleConenction(conn MyConn, serverCon Server) {
 	defer func(conn MyConn) {
 		fmt.Print("lets close it")
+		// delete(replConn, conn.ID)
 		conn.Close()
 	}(conn)
-	conCOunt++;
-	fmt.Println("number of connections")
-	fmt.Println(conCOunt)
 
 	for {
 		fmt.Println("read another")
