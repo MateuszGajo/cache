@@ -69,6 +69,9 @@ func (conn MyConn)  Get(args [] string) (err error) {
 		result = BuildNullBulkString()
 	}
 
+	fmt.Println("what are we sending?")
+	fmt.Println(value)
+
 	_, err = conn.Write([]byte(result))
 	return err
 
