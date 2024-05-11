@@ -95,6 +95,7 @@ func handShake(){
 		return
 	}
 
+	fmt.Print("where problem 1 ?")
 
 	inputComm, err := readInput(conn)
 	if err != nil {
@@ -108,6 +109,8 @@ func handShake(){
 		fmt.Print("Response its invalid")
 		os.Exit(1)
 	}
+
+	fmt.Print("where problem 2?")
 
 	conn.Write([]byte("*3"+CLRF+"$8"+CLRF+"REPLCONF"+CLRF+"$14"+CLRF+"listening-port"+CLRF+"$4"+CLRF + strconv.Itoa((port)) + CLRF)) // lets build it
 	inputComm, err = readInput(conn)
@@ -150,7 +153,7 @@ func handShake(){
 	fmt.Println(inputComm.commandStr)
 	inputComm,err = readInput(conn)
 	if err != nil {
-		fmt.Print("error while psync second read replica")
+		fmt.Printf("error while psync second read replica %v", err)
 		conn.Close()
 		return
 	}
@@ -318,6 +321,7 @@ func handleConenction(conn MyConn, serverCon Server) {
 	for {
 		fmt.Println("read another")
 		comamndInput, err := readInput(conn)
+		fmt.Print(comamndInput)
 		if err != nil {
 			fmt.Println("Error while reaidng", err)
 			break;

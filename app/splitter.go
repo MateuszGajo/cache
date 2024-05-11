@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 )
@@ -11,10 +12,12 @@ func splitMultipleCommandString(input string) (res [][]string, err error) {
 	parts := strings.Split(input, CLRF)
 	partsLen := len(parts)
 	for len(parts) -1 > index {
+
 		switch parts[index][0] {
 		case 43:
 			endIndex := index+1
 			if(endIndex >= partsLen) {
+				fmt.Print("invalid herre")
 				return nil, errors.New("look like invalid input")
 			}
 			command:=parts[index: endIndex][0]
@@ -24,7 +27,8 @@ func splitMultipleCommandString(input string) (res [][]string, err error) {
 			index = endIndex
 		case 36:
 			endIndex := index+2
-			if(endIndex >= partsLen) {
+
+			if(endIndex > partsLen) {
 				return nil, errors.New("look like invalid input")
 			}
 			res = append(res, parts[index+1: endIndex])
