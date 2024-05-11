@@ -102,7 +102,7 @@ func handShake(){
 		conn.Close()
 		return
 	}
-	args := inputComm.commandStr
+	args := inputComm.commandStr[0]
 
 	if args[0] != "PONG" {
 		fmt.Print("Response its invalid")
@@ -116,7 +116,7 @@ func handShake(){
 		conn.Close()
 		return
 	}
-	args = inputComm.commandStr
+	args = inputComm.commandStr[0]
 
 	if args[0] != "OK" {
 		fmt.Print("Response its invalid")
@@ -130,7 +130,7 @@ func handShake(){
 		conn.Close()
 		return
 	}
-	args = inputComm.commandStr
+	args = inputComm.commandStr[0]
 	if args[0] != "OK" {
 		fmt.Print("Response its invalid")
 		os.Exit(1)
@@ -144,7 +144,7 @@ func handShake(){
 		conn.Close()
 		return
 	}
-	args = inputComm.commandStr
+	// args = inputComm.commandStr[0]
 
 	fmt.Print("response")
 	fmt.Println(inputComm.commandStr)
@@ -228,7 +228,7 @@ func main() {
 }
 
 type CommandInput struct{
-	commandStr []string
+	commandStr [][]string
 	commandByte string
 }
 type MyConn struct {
@@ -244,7 +244,7 @@ func readInput(conn net.Conn) (CommandInput, error){
 		return CommandInput{}, err
 	}
 
-	command := []string {}
+	command := [][]string {}
 	input :=string(buf[:n])
 
 	if(len(input) ==0){ 
@@ -253,16 +253,25 @@ func readInput(conn net.Conn) (CommandInput, error){
 			commandByte: input,
 		}, nil
 	}
-	switch(input[0]) {
-	case 43:
-		command = append(command,RESPSimpleString(input))
-	case 36:
-		command = RESPBulkString(input)
-	case 42:
-		command = RESPArray(input)
-	default:
-		fmt.Print("Unknown RESP enconfing")
+
+	command, err = splitMultipleCommandString(input)
+
+	if err != nil {
+		return CommandInput{}, err
 	}
+	// switch(input[0]) {
+	// case 43:
+	// 	command = append(command,RESPSimpleString(input))
+	// case 36:
+	// 	command = RESPBulkString(input)
+	// case 42:
+	// 	command = RESPArray(input)
+	// default:
+	// 	fmt.Print("Unknown RESP enconfing")
+	// }
+
+	fmt.Println("what we printing here")
+	fmt.Println(command)
 
 	return CommandInput{
 		commandStr: command,
@@ -270,6 +279,8 @@ func readInput(conn net.Conn) (CommandInput, error){
 	}, nil
 
 }
+
+
 var replConn map[string]net.Conn = make(map[string]net.Conn)
 
 
@@ -311,45 +322,58 @@ func handleConenction(conn MyConn, serverCon Server) {
 			fmt.Println("Error while reaidng", err)
 			break;
 		}
-		args := comamndInput.commandStr
-
-		if len(args) == 0 {
-			fmt.Println("No argument passed")
+		
+		for _,v := range comamndInput.commandStr {
+		err = executeCommand(v,comamndInput.commandByte, conn, serverCon)
+		if err != nil {
+			fmt.Println("Error while reaidng", err)
 			break;
-		}
-
-		command := Commands(strings.ToUpper(args[0]))
-
-		if whitelistProp[command] && replConn != nil {
-			propagte(conn, []byte(comamndInput.commandByte))
-		}
-
-		switch(command) {
-		case PING:
-			err = conn.Ping()
-		case ECHO:
-			err = conn.Echo(args)
-		case SET:	
-			err = conn.Set(args)
-		case GET:
-			err = conn.Get(args)
-		case INFO:
-			err = conn.Info(args, serverCon)
-		case REPLCONF:
-			err = conn.ReplConf()
-		case PSYNC: 
-			err = conn.Psync(serverCon)
-			replConn[conn.ID] = conn;
-		default: {
-			err = errors.New(fmt.Sprintf("invalid command received:%v", command))
-			fmt.Println("invalid command received:", command)
-			conn.Write([]byte("-ERR unknown command\r\n"))
 		}
 		}
 		
-		if err != nil {
-			fmt.Println("Error writing to connection: ", err.Error())
-			break;
-		}
 	}
+}
+
+func executeCommand(commandI []string, bytes string, conn MyConn, serverCon Server) (err error){
+	args := commandI
+
+		if len(args) == 0 {
+			fmt.Println("No argument passed")
+			return err
+		}
+
+	command := Commands(strings.ToUpper(args[0]))
+	if whitelistProp[command] && replConn != nil {
+		propagte(conn, []byte(bytes))
+	}
+
+	switch(command) {
+	case PING:
+		err = conn.Ping()
+	case ECHO:
+		err = conn.Echo(args)
+	case SET:	
+		err = conn.Set(args)
+	case GET:
+		err = conn.Get(args)
+	case INFO:
+		err = conn.Info(args, serverCon)
+	case REPLCONF:
+		err = conn.ReplConf()
+	case PSYNC: 
+		err = conn.Psync(serverCon)
+		replConn[conn.ID] = conn;
+	default: {
+		err = errors.New(fmt.Sprintf("invalid command received:%v", command))
+		fmt.Println("invalid command received:", command)
+		conn.Write([]byte("-ERR unknown command\r\n"))
+	}
+	}
+	
+	if err != nil {
+		fmt.Println("Error writing to connection: ", err.Error())
+		return err
+	}
+
+	return err
 }
