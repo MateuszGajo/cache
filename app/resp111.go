@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"testing"
 )
 
@@ -16,7 +15,7 @@ var _ = func() bool {
 }()
 
 func TestSimpleString(t *testing.T) {
-	flag.Set("port", "8888")
+	// flag.Set("port", "8888")
 	// flag.Parse()
 	resp := BuildSimpleString("test")
 
