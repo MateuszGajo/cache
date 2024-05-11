@@ -167,7 +167,7 @@ func handShake(){
 
 	// return nil;
 
-	go handleConenction(MyConn{Conn: conn, ignoreWrites: false, ID: replica.Port}, Server{}) 
+	go handleConenction(MyConn{Conn: conn, ignoreWrites: false, ID: strconv.Itoa(port)}, Server{}) 
 }
 
 func main() {
@@ -267,7 +267,7 @@ func readInput(conn net.Conn) (CommandInput, error){
 	}, nil
 
 }
-var replConn []net.Conn
+var replConn map[string]net.Conn = make(map[string]net.Conn)
 
 
 func propagte (conn net.Conn, command []byte) {
@@ -336,7 +336,7 @@ func handleConenction(conn MyConn, serverCon Server) {
 			err = conn.ReplConf()
 		case PSYNC: 
 			err = conn.Psync(serverCon)
-			replConn = append(replConn, conn)
+			replConn[conn.ID] = conn;
 		default: {
 			err = errors.New(fmt.Sprintf("invalid command received:%v", command))
 			fmt.Println("invalid command received:", command)
