@@ -167,7 +167,7 @@ func handShake(){
 
 	// return nil;
 
-	go handleConenction(MyConn{Conn: conn, ignoreWrites: false, ID: strconv.Itoa(port)}, Server{}) 
+	go handleConenction(MyConn{Conn: conn, ignoreWrites: false, ID: conn.LocalAddr().String()}, Server{}) 
 }
 
 func main() {
@@ -219,7 +219,7 @@ func main() {
 		fmt.Print("ddds?")
 	
 
-		go handleConenction(MyConn{Conn: conn, ignoreWrites: false, ID: strconv.Itoa(port) }, serverCon)
+		go handleConenction(MyConn{Conn: conn, ignoreWrites: false, ID: conn.LocalAddr().String() }, serverCon)
 	}
 	
 }
