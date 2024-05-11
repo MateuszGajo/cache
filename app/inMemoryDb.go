@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -37,16 +36,14 @@ func handleSet(key, value string, expiryTime *int) bool {
 }
 
 
-func handleGet(key string) (string, error) {
+func handleGet(key string) string {
 	defer lock.RUnlock()
 	lock.RLock()
 	r, ok := m[key]
-	if !ok {
-		return "", errors.New("Problem while getting value")
-	}
-	if (time.Now().After(r.ExpireAt) && r.ExpireAt != time.Time{}) {
-		return "", nil
+	if !ok ||(time.Now().After(r.ExpireAt) && r.ExpireAt != time.Time{})  {
+		return ""
 	}
 
-	return r.Value, nil
+
+	return r.Value
 }

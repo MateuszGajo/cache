@@ -60,15 +60,10 @@ func (conn MyConn)  Set(args []string) (err error) {
 func (conn MyConn)  Get(args [] string) (err error) {
 	key := args[1]
 	var value, result string
-	value, err = handleGet(key)
+	value = handleGet(key)
 
-	if err != nil {
-		return err
-	}
 
 	if(value != "") {
-		fmt.Print("value")
-		fmt.Print(value)
 		result = BuildBulkString(value)
 	} else {
 		result = BuildNullBulkString()
