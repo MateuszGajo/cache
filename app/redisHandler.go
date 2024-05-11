@@ -62,10 +62,13 @@ func (conn MyConn)  Get(args [] string) (err error) {
 	var value, result string
 	value = handleGet(key)
 
-
+	fmt.Println("what is the value?")
+	fmt.Println(value)
 	if(value != "") {
+		fmt.Println("not empty value")
 		result = BuildBulkString(value)
 	} else {
+		fmt.Println("empty value")
 		result = BuildNullBulkString()
 	}
 
