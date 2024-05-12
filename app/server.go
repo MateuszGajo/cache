@@ -148,6 +148,8 @@ func handShake(){
 		return
 	}
 
+	fmt.Println("commands")
+	fmt.Println(inputComm.commandStr)
 	if(len(inputComm.commandStr)  == 1){
 	inputComm,err = readInput(conn)
 	if err != nil {
