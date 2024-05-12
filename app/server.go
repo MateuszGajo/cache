@@ -147,31 +147,16 @@ func handShake(){
 		conn.Close()
 		return
 	}
-	// args = inputComm.commandStr[0]
 
-	fmt.Print("response")
-	fmt.Println(inputComm.commandStr)
-	// inputComm,err = readInput(conn)
-	// if err != nil {
-	// 	fmt.Printf("error while psync second read replica %v", err)
-	// 	conn.Close()
-	// 	return
-	// }
-	// fmt.Print("after handshake....")
-	// fmt.Print(inputComm.commandStr)
+	if(len(inputComm.commandStr)  == 1){
+	inputComm,err = readInput(conn)
+	if err != nil {
+		fmt.Printf("error while psync second read replica %v", err)
+		conn.Close()
+		return
+	} 
 
-
-
-	// if args[0] != "FULLRESYNC" {
-	// 	fmt.Println("hello")
-	// 	fmt.Println(args[0])
-	// 	fmt.Print("Response its invalid")
-	// 	os.Exit(1)
-	// }
-
-	// defer conn.Close()
-
-	// return nil;
+	}
 
 	go handleConenction(MyConn{Conn: conn, ignoreWrites: false, ID: strconv.Itoa(rand.IntN(100))}, Server{}) 
 }
