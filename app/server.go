@@ -147,6 +147,11 @@ func handShake(){
 		conn.Close()
 		return
 	}
+	args = inputComm.commandStr[0]
+	if args[0] != "FULLRESYNC" {
+		fmt.Print("Response its invalid")
+		os.Exit(1)
+	}
 
 	fmt.Println("commands")
 	fmt.Println(inputComm.commandStr)
