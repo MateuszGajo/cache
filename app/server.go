@@ -122,7 +122,7 @@ func handShake(){
 	args = inputComm.commandStr[0]
 
 	if args[0] != "OK" {
-		fmt.Print("Response its invalid")
+		fmt.Printf("Response its invalid, we got:%v", args[0])
 		os.Exit(1)
 	}
 
@@ -135,7 +135,7 @@ func handShake(){
 	}
 	args = inputComm.commandStr[0]
 	if args[0] != "OK" {
-		fmt.Print("Response its invalid")
+		fmt.Printf("Response its invalid, we got:%v", args[0])
 		os.Exit(1)
 	}
 
@@ -149,7 +149,7 @@ func handShake(){
 	}
 	args = inputComm.commandStr[0]
 	if args[0] != "FULLRESYNC" {
-		fmt.Print("Response its invalid")
+		fmt.Printf("Response its invalid, we got:%v", args[0])
 		os.Exit(1)
 	}
 
