@@ -53,14 +53,15 @@ var replica Replica
 
 func init(){
 	flag.IntVar(&port, "port", 6379, "port to listen to")
-	flag.StringVar(&replica.Address, "replicaof", "", "master address")
+	replicaof := flag.String("replicaof", "", "Replica of master address")
+	
 	flag.Parse()
-
-	if len(flag.Args()) > 0 {
-		fmt.Println("port", port)
-		fmt.Println(flag.Args())
-		replica.Port = flag.Args()[0]
-
+	if *replicaof != "" {
+		parts := strings.Split(*replicaof, " ")
+		if len(parts) == 2 {
+			replica.Address = parts[0]
+			replica.Port = parts[1]
+		}
 	}
 }
 
@@ -69,14 +70,6 @@ type Server struct {
 	replicaId string
 	replicaOffSet int
 }
-
-// func NewServer(network string, port string) *Server {
-// 	return &Server{
-// 		address: fmt.Sprintf("0.0.0.0:%s", port),
-// 		rep:     newReplication(master),
-// 	}
-// }
-
 
 func handShake(){
 	fmt.Print("replica handshake?")
@@ -122,7 +115,7 @@ func handShake(){
 	args = inputComm.commandStr[0]
 
 	if args[0] != "OK" {
-		fmt.Printf("Response its invalid, we got:%v", args[0])
+		fmt.Printf("Response its invalid, expected ok we got:%v", args[0])
 		os.Exit(1)
 	}
 
@@ -135,35 +128,40 @@ func handShake(){
 	}
 	args = inputComm.commandStr[0]
 	if args[0] != "OK" {
-		fmt.Printf("Response its invalid, we got:%v", args[0])
+		fmt.Printf("Response its invalid, expected ok we got:%v", args[0])
 		os.Exit(1)
 	}
 
 	conn.Write([]byte("*3"+CLRF+"$5"+CLRF+"PSYNC"+CLRF+"$1"+CLRF+"?"+CLRF+"$2"+CLRF+"-1"+CLRF))
-	fmt.Println("sending psync")
-	inputComm, err = readInput(conn)
-	if err != nil {
-		fmt.Print("error while psync master replica")
-		conn.Close()
-		return
-	}
-	args = inputComm.commandStr[0]
-	if args[0] != "FULLRESYNC" {
-		fmt.Printf("Response its invalid, we got:%v", args[0])
-		os.Exit(1)
-	}
+	readSyncResp(conn)
+	// os.Exit(1)
+	// fmt.Println("sending psync")
+	// inputComm, err = readInput(conn)
+	// if err != nil {
+	// 	fmt.Print("error while psync master replica")
+	// 	conn.Close()
+	// 	return
+	// }
+	// args = inputComm.commandStr[0]
+	// if !strings.Contains(args[0], "FULLRESYNC") {
+	// 	fmt.Printf("Response its invalid, expected fullresyns we got:%v", args[0])
+	// 	fmt.Println([]byte(args[0]))
+	// 	os.Exit(1)
+	// }
+	// // // handle situation where tcp segment can contation fullresync + file + command
+	// // // when can use read differently
 
-	fmt.Println("commands")
-	fmt.Println(inputComm.commandStr)
-	if(len(inputComm.commandStr)  == 1){
-	inputComm,err = readInput(conn)
-	if err != nil {
-		fmt.Printf("error while psync second read replica %v", err)
-		conn.Close()
-		return
-	} 
+	// fmt.Println("commands")
+	// fmt.Println(inputComm.commandStr)
+	// if(len(inputComm.commandStr)  == 1){
+	// inputComm,err = readInput(conn)
+	// if err != nil {
+	// 	fmt.Printf("error while psync second read replica %v", err)
+	// 	conn.Close()
+	// 	return
+	// } 
 
-	}
+	// }
 
 	go handleConenction(MyConn{Conn: conn, ignoreWrites: false, ID: strconv.Itoa(rand.IntN(100))}, Server{}) 
 }
@@ -235,6 +233,7 @@ type MyConn struct {
 func readInput(conn net.Conn) (CommandInput, error){
 	buf := make([]byte, 1024)
 	n, err := conn.Read(buf)
+	//rething read what about command seinding more than 1 command, we can read half of command :/
 	if err != nil {
 		return CommandInput{}, err
 	}

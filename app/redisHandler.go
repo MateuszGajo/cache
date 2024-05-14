@@ -104,7 +104,6 @@ func (conn MyConn) Psync(serverCon Server) (err error) {
 	emptyRdb, _ := base64.StdEncoding.DecodeString(EMPTY_RDB_FILE_BASE64)
 	rdbBuffer := []byte(fmt.Sprintf("$%v%v",fmt.Sprint(len(emptyRdb)), CLRF))
 	rdbBuffer = append(rdbBuffer, emptyRdb...)
-	fmt.Println("seding file")
 
 	_, err = conn.Write([]byte(rdbBuffer))
 	if err !=nil {

@@ -1,11 +1,44 @@
 package main
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
+	"net"
 	"strconv"
 	"strings"
 )
+
+
+func readSyncResp(conn net.Conn) {
+	  reader := bufio.NewReader(conn)
+
+	  _, err:= reader.ReadBytes('$')
+	  if err != nil {
+		fmt.Printf("Problem reading fullresp response, err:%v", err)
+	  }
+
+	  input2, err:= reader.ReadBytes('n')
+	  if err != nil {
+		fmt.Printf("Problem reading szie of rdb file, err:%v", err)
+	  }
+
+
+	  RdbSize, err := strconv.Atoi(strings.Replace(string(input2), CLRF, "", -1))
+	  if err != nil {
+		fmt.Printf("Read not valid length for rdb file, err: %v", RdbSize)
+	  }
+	  buff := make([]byte, RdbSize)
+
+	  _, err = reader.Read(buff)
+
+	  if err != nil {
+		fmt.Printf("Problem reading rdb file, err: %v", RdbSize)
+	  }
+	  fmt.Println("what did you read")
+	  fmt.Print(buff[:RdbSize])
+	
+}
 
 func splitMultipleCommandString(input string) (res [][]string, err error) {
 	var index int
