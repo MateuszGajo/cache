@@ -40,11 +40,11 @@ func readSyncResp(conn net.Conn) {
 	  }
 	  buff := make([]byte, RdbSize)
 
-	  readd, err := reader.Read(buff)
+	  _, err = reader.Read(buff)
 
 	  fmt.Println("what did we read further")
-	  fmt.Println(string(readd))
-	  fmt.Println(readd)
+	  fmt.Println(string(buff[:RdbSize]))
+	  fmt.Println(buff[:RdbSize])
 	  fmt.Println("what did we read further end")
 
 	  if err != nil {
