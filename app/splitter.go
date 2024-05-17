@@ -43,6 +43,7 @@ func readSyncResp(conn net.Conn) {
 	  readd, err := reader.Read(buff)
 
 	  fmt.Println("what did we read further")
+	  fmt.Println(string(readd))
 	  fmt.Println(readd)
 	  fmt.Println("what did we read further end")
 
