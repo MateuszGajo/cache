@@ -111,7 +111,7 @@ func (conn MyConn)  replConfAct() (err error) {
 }
 
 func (conn MyConn)  ReplConf(args []string) (err error) {
-	command := ReplConfCommand(strings.ToUpper(args[0]))
+	command := ReplConfCommand(strings.ToUpper(args[1]))
 
 	switch (command) {
 	case LISTENING_PORT:
