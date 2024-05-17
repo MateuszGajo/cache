@@ -53,4 +53,13 @@ func BuildNullBulkString() string {
 	return fmt.Sprintf("$-1%v", CLRF)
 }
 
+func BuildRESPArray(args []string) string {
+	resp := fmt.Sprintf("*%v%v", len(args), CLRF)
+
+	for _, arg := range args {
+		resp += fmt.Sprintf("$%v%v%v%v", len(arg), CLRF, arg, CLRF)
+	}
+
+	return resp
+}
    

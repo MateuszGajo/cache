@@ -54,7 +54,7 @@ var replica Replica
 func init(){
 	flag.IntVar(&port, "port", 6379, "port to listen to")
 	replicaof := flag.String("replicaof", "", "Replica of master address")
-	
+
 	flag.Parse()
 	if *replicaof != "" {
 		parts := strings.Split(*replicaof, " ")
@@ -134,34 +134,6 @@ func handShake(){
 
 	conn.Write([]byte("*3"+CLRF+"$5"+CLRF+"PSYNC"+CLRF+"$1"+CLRF+"?"+CLRF+"$2"+CLRF+"-1"+CLRF))
 	readSyncResp(conn)
-	// os.Exit(1)
-	// fmt.Println("sending psync")
-	// inputComm, err = readInput(conn)
-	// if err != nil {
-	// 	fmt.Print("error while psync master replica")
-	// 	conn.Close()
-	// 	return
-	// }
-	// args = inputComm.commandStr[0]
-	// if !strings.Contains(args[0], "FULLRESYNC") {
-	// 	fmt.Printf("Response its invalid, expected fullresyns we got:%v", args[0])
-	// 	fmt.Println([]byte(args[0]))
-	// 	os.Exit(1)
-	// }
-	// // // handle situation where tcp segment can contation fullresync + file + command
-	// // // when can use read differently
-
-	// fmt.Println("commands")
-	// fmt.Println(inputComm.commandStr)
-	// if(len(inputComm.commandStr)  == 1){
-	// inputComm,err = readInput(conn)
-	// if err != nil {
-	// 	fmt.Printf("error while psync second read replica %v", err)
-	// 	conn.Close()
-	// 	return
-	// } 
-
-	// }
 
 	go handleConenction(MyConn{Conn: conn, ignoreWrites: false, ID: strconv.Itoa(rand.IntN(100))}, Server{}) 
 }
@@ -354,7 +326,7 @@ func executeCommand(commandI []string, bytes string, conn MyConn, serverCon Serv
 	case INFO:
 		err = conn.Info(args, serverCon)
 	case REPLCONF:
-		err = conn.ReplConf()
+		err = conn.ReplConf(args)
 	case PSYNC: 
 		err = conn.Psync(serverCon)
 		replConn[conn.ID] = conn;

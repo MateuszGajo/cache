@@ -86,7 +86,39 @@ func (conn MyConn)  Info(args []string, serverCon Server) (err error) {
 	return err
 }
 
-func (conn MyConn)  ReplConf() (err error) {
+type ReplConfCommand string
+const (
+	LISTENING_PORT ReplConfCommand = "LISTENING-PORT"
+	CAPA ReplConfCommand = "CAPA"
+	GETACK ReplConfCommand = "GETACT"
+)
+
+
+
+func (conn MyConn)  replConfConfirm() (err error) {
+	result :=  BuildSimpleString("OK")
+	_, err = conn.Write([]byte(result))
+	return err
+}
+
+func (conn MyConn)  replConfAct() (err error) {
+	result :=  BuildRESPArray([]string{"REPLCONF", "ACK", "0"})
+	_, err = conn.Write([]byte(result))
+	return err
+}
+
+func (conn MyConn)  ReplConf(args []string) (err error) {
+	command := ReplConfCommand(strings.ToUpper(args[0]))
+
+	switch (command) {
+	case LISTENING_PORT:
+	case CAPA:
+		return conn.replConfConfirm()
+	case GETACK:
+		return conn.replConfAct()
+	default:
+		fmt.Printf("could find command: %v", command)
+	}
 	result :=  BuildSimpleString("OK")
 	_, err = conn.Write([]byte(result))
 	return err
