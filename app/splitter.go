@@ -19,7 +19,7 @@ func readSyncResp(conn net.Conn) {
 	  }
 	  fmt.Print("read untill $", string(read))
 
-	  input2, err:= reader.ReadBytes('n')
+	  input2, err:= reader.ReadBytes('\n')
 	  if err != nil {
 		fmt.Printf("Problem reading szie of rdb file, err:%v", err)
 	  }
