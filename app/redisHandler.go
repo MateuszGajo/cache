@@ -116,8 +116,7 @@ func (conn MyConn)  ReplConf(args []string) (err error) {
 	fmt.Println(command == LISTENING_PORT)
 
 	switch (command) {
-	case LISTENING_PORT:
-	case CAPA:
+	case LISTENING_PORT,CAPA:
 		return conn.replConfConfirm()
 	case GETACK:
 		return conn.replConfAct()
