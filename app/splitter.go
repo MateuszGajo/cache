@@ -32,7 +32,7 @@ func readSyncResp(conn net.Conn) {
 
 	  RdbSize, err := strconv.Atoi(strings.Replace(string(input2), CLRF, "", -1))
 	  
-	  fmt.Print("value converted")
+	  fmt.Println("value converted")
 	  fmt.Println(RdbSize)
 	  fmt.Print("end of value")
 	  if err != nil {
@@ -40,7 +40,11 @@ func readSyncResp(conn net.Conn) {
 	  }
 	  buff := make([]byte, RdbSize)
 
-	  _, err = reader.Read(buff)
+	  readd, err := reader.Read(buff)
+
+	  fmt.Println("what did we read further")
+	  fmt.Println(readd)
+	  fmt.Println("what did we read further end")
 
 	  if err != nil {
 		fmt.Printf("Problem reading rdb file, err: %v", RdbSize)
