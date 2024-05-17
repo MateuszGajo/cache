@@ -24,13 +24,17 @@ func readSyncResp(conn net.Conn) {
 		fmt.Printf("Problem reading szie of rdb file, err:%v", err)
 	  }
 
-	  fmt.Print("read until n")
+	  fmt.Println("read until n")
 	  fmt.Println(string(input2))
 	  fmt.Println(input2)
 	  fmt.Print("end  n read")
 
 
 	  RdbSize, err := strconv.Atoi(strings.Replace(string(input2), CLRF, "", -1))
+	  
+	  fmt.Print("value converted")
+	  fmt.Println(RdbSize)
+	  fmt.Print("end of value")
 	  if err != nil {
 		fmt.Printf("Read not valid length for rdb file, err: %v", RdbSize)
 	  }
