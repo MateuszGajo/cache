@@ -94,9 +94,10 @@ const (
 )
 
 
-
 func (conn MyConn)  replConfConfirm() (err error) {
+	fmt.Println("repl cofnirm")
 	result :=  BuildSimpleString("OK")
+	fmt.Println("simple string")
 	_, err = conn.Write([]byte(result))
 	return err
 }
