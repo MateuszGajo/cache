@@ -112,6 +112,8 @@ func (conn MyConn)  ReplConf(args []string) (err error) {
 	command := ReplConfCommand(strings.ToUpper(args[1]))
 
 	fmt.Println("args", args)
+	fmt.Println("command", command)
+	fmt.Println(command == LISTENING_PORT)
 
 	switch (command) {
 	case LISTENING_PORT:
