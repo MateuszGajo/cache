@@ -13,15 +13,18 @@ import (
 func readSyncResp(conn net.Conn) {
 	  reader := bufio.NewReader(conn)
 
-	  _, err:= reader.ReadBytes('$')
+	  read, err:= reader.ReadBytes('$')
 	  if err != nil {
 		fmt.Printf("Problem reading fullresp response, err:%v", err)
 	  }
+	  fmt.Print("read untill $", string(read))
 
 	  input2, err:= reader.ReadBytes('n')
 	  if err != nil {
 		fmt.Printf("Problem reading szie of rdb file, err:%v", err)
 	  }
+
+	  fmt.Print("read until n", string(input2))
 
 
 	  RdbSize, err := strconv.Atoi(strings.Replace(string(input2), CLRF, "", -1))
@@ -36,7 +39,8 @@ func readSyncResp(conn net.Conn) {
 		fmt.Printf("Problem reading rdb file, err: %v", RdbSize)
 	  }
 	  fmt.Println("what did you read")
-	  fmt.Print(buff[:RdbSize])
+	  fmt.Println(buff[:RdbSize])
+	  fmt.Println("end")
 	
 }
 
