@@ -90,7 +90,7 @@ type ReplConfCommand string
 const (
 	LISTENING_PORT ReplConfCommand = "LISTENING-PORT"
 	CAPA ReplConfCommand = "CAPA"
-	GETACK ReplConfCommand = "GETACT"
+	GETACK ReplConfCommand = "GETACK"
 )
 
 
