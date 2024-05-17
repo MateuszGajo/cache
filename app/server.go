@@ -207,6 +207,7 @@ func readInput(conn net.Conn) (CommandInput, error){
 	n, err := conn.Read(buf)
 	//rething read what about command seinding more than 1 command, we can read half of command :/
 	if err != nil {
+		fmt.Print("what we read", string(buf[:n]))
 		return CommandInput{}, err
 	}
 
