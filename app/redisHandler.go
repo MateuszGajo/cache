@@ -119,8 +119,6 @@ func (conn MyConn)  ReplConf(args []string) (err error) {
 	default:
 		fmt.Printf("could find command: %v with args: %v", command, args)
 	}
-	result :=  BuildSimpleString("OK")
-	_, err = conn.Write([]byte(result))
 	return err
 }
 
