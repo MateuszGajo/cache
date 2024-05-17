@@ -102,10 +102,7 @@ func (conn MyConn)  replConfConfirm() (err error) {
 }
 
 func (conn MyConn)  replConfAct() (err error) {
-	fmt.Println("Act")
 	result :=  BuildRESPArray([]string{"REPLCONF", "ACK", "0"})
-	fmt.Println("send")
-	fmt.Println(result)
 	_, err = conn.Write([]byte(result))
 	return err
 }
