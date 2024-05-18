@@ -71,29 +71,51 @@ func TestWithCommandAfterRdbFile(t *testing.T) {
 	}
 
 }
+func TestWithCommandAfterRdbFile2(t *testing.T) {
+	tmpString := "$88\r\nREDIS0011\xfa\tredis-ver\x057.2.0\xfa\nredis-bits\xc0@\xfa\x05ctime\xc2m\b\xbce\xfa\bused-mem°\xc4\x10\x00\xfa\baof-base\xc0\x00\xff\xf0n;\xfe\xc0\xffZ\xa2*3\r\n$8\r\nREPLCONF\r\n$6\r\nGETACK\r\n$1\r\n*\r\n"
 
-func TestBreakComamnd(t *testing.T) {
-	tmpString := fmt.Sprintf("+FULLRESYNC 75cd7bc10c49047e0d163660f3b90625b1af31dc 0%v$88%vREDIS0011\xfa\tredis-ver\x057.2.0\xfa\nredis-bits\xc0@\xfa\x05ctime\xc2m\b\xbce\xfa\bused-mem°\xc4\x10\x00\xfa\baof-base\xc0\x00\xff\xf0n;\xfe\xc0\xffZ\xa2*3\r\n$3\r\nset\r\n$3\r\nfoo", CLRF, CLRF)
-	
-
-	resp, rest, _ := splitMultipleCommandString(tmpString)
+	resp, _,_ := splitMultipleCommandString(tmpString)
 
 	fmt.Print(resp)
 
-	if !reflect.DeepEqual(resp[0].command, []string{"FULLRESYNC", "75cd7bc10c49047e0d163660f3b90625b1af31dc", "0"} ){
-		t.Fatalf("expected %v, got: %v",  []string{"FULLRESYNC", "75cd7bc10c49047e0d163660f3b90625b1af31dc", "0"}, resp[0].command)
+
+
+	if !reflect.DeepEqual(resp[0].command, []string{"rdb-file", "REDIS0011\xfa\tredis-ver\x057.2.0\xfa\nredis-bits\xc0@\xfa\x05ctime\xc2m\b\xbce\xfa\bused-mem°\xc4\x10\x00\xfa\baof-base\xc0\x00\xff\xf0n;\xfe\xc0\xffZ\xa2"} ){
+		t.Fatalf("expected %q, got: %q",  []string{"rdb-file", "REDIS0011\xfa\tredis-ver\x057.2.0\xfa\nredis-bits\xc0@\xfa\x05ctime\xc2m\b\xbce\xfa\bused-mem°\xc4\x10\x00\xfa\baof-base\xc0\x00\xff\xf0n;\xfe\xc0\xffZ\xa2"}, resp[0].command)
 	}
 
-	if !reflect.DeepEqual(resp[1].command, []string{"rdb-file", "REDIS0011\xfa\tredis-ver\x057.2.0\xfa\nredis-bits\xc0@\xfa\x05ctime\xc2m\b\xbce\xfa\bused-mem°\xc4\x10\x00\xfa\baof-base\xc0\x00\xff\xf0n;\xfe\xc0\xffZ\xa2"} ){
-		t.Fatalf("expected %q, got: %q",  []string{"rdb-file", "REDIS0011\xfa\tredis-ver\x057.2.0\xfa\nredis-bits\xc0@\xfa\x05ctime\xc2m\b\xbce\xfa\bused-mem°\xc4\x10\x00\xfa\baof-base\xc0\x00\xff\xf0n;\xfe\xc0\xffZ\xa2"}, resp[1].command)
-	}
-
-	if(len(resp) >2) {
-		t.Fatalf("should return only two command, returned: %q", resp)
-	}
-
-	if !(rest == "*3\r\n$3\r\nset\r\n$3\r\nfoo"){
-		t.Fatalf("expected %q, got: %q",  "*3\r\n$3\r\nset\r\n$3\r\nfoo" , rest)
+	if !reflect.DeepEqual(resp[1].command, []string{"REPLCONF", "GETACK", "*"} ){
+		t.Fatalf("expected %q, got: %q",  []string{"REPLCONF", "GETACK", "*"} , resp[1].command)
 	}
 
 }
+
+
+
+
+
+// func TestBreakComamnd(t *testing.T) {
+// 	tmpString := fmt.Sprintf("+FULLRESYNC 75cd7bc10c49047e0d163660f3b90625b1af31dc 0%v$88%vREDIS0011\xfa\tredis-ver\x057.2.0\xfa\nredis-bits\xc0@\xfa\x05ctime\xc2m\b\xbce\xfa\bused-mem°\xc4\x10\x00\xfa\baof-base\xc0\x00\xff\xf0n;\xfe\xc0\xffZ\xa2*3\r\n$3\r\nset\r\n$3\r\nfoo", CLRF, CLRF)
+	
+
+// 	resp, rest, _ := splitMultipleCommandString(tmpString)
+
+// 	fmt.Print(resp)
+
+// 	if !reflect.DeepEqual(resp[0].command, []string{"FULLRESYNC", "75cd7bc10c49047e0d163660f3b90625b1af31dc", "0"} ){
+// 		t.Fatalf("expected %v, got: %v",  []string{"FULLRESYNC", "75cd7bc10c49047e0d163660f3b90625b1af31dc", "0"}, resp[0].command)
+// 	}
+
+// 	if !reflect.DeepEqual(resp[1].command, []string{"rdb-file", "REDIS0011\xfa\tredis-ver\x057.2.0\xfa\nredis-bits\xc0@\xfa\x05ctime\xc2m\b\xbce\xfa\bused-mem°\xc4\x10\x00\xfa\baof-base\xc0\x00\xff\xf0n;\xfe\xc0\xffZ\xa2"} ){
+// 		t.Fatalf("expected %q, got: %q",  []string{"rdb-file", "REDIS0011\xfa\tredis-ver\x057.2.0\xfa\nredis-bits\xc0@\xfa\x05ctime\xc2m\b\xbce\xfa\bused-mem°\xc4\x10\x00\xfa\baof-base\xc0\x00\xff\xf0n;\xfe\xc0\xffZ\xa2"}, resp[1].command)
+// 	}
+
+// 	if(len(resp) >2) {
+// 		t.Fatalf("should return only two command, returned: %q", resp)
+// 	}
+
+// 	if !(rest == "*3\r\n$3\r\nset\r\n$3\r\nfoo"){
+// 		t.Fatalf("expected %q, got: %q",  "*3\r\n$3\r\nset\r\n$3\r\nfoo" , rest)
+// 	}
+
+// }

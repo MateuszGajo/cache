@@ -63,7 +63,7 @@ func splitMultipleCommandString(input string) (res []Aa, tempInp string, err err
 		if(len(tempInp) >= endIndex + delimiterLen && tempInp[endIndex +1] == 13 && tempInp[endIndex +2] == 10) {
 			//normal command
 			endIndex +=2
-			tempInp = tempInp[endIndex:]
+			
 			byteParsed += len(tempInp[:endIndex])
 			commands := Aa{
 				command: []string{tempInp[index+delimiterLen:endIndex]},
@@ -71,11 +71,12 @@ func splitMultipleCommandString(input string) (res []Aa, tempInp string, err err
 				raw: tempInp[:endIndex],
 			}
 			res= append(res, commands)
+			tempInp = tempInp[endIndex:]
 		} else {
 			//rdb file
 			fmt.Println(commLen, endIndex)
 			fmt.Println(len(tempInp))
-			tempInp = tempInp[endIndex:]
+			
 
 			commands := Aa{
 				command: []string{"rdb-file", tempInp[index+ delimiterLen:endIndex]},
@@ -83,6 +84,7 @@ func splitMultipleCommandString(input string) (res []Aa, tempInp string, err err
 				raw: tempInp[:endIndex],
 			}
 			res= append(res, commands)
+			tempInp = tempInp[endIndex:]
 		}
 
 	case 42:
@@ -104,7 +106,7 @@ func splitMultipleCommandString(input string) (res []Aa, tempInp string, err err
 			for i:=2;i<len(parts);i+=2 {
 				temp = append(temp, parts[i])
 			}
-		tempInp = tempInp[endIndex+2:]
+		
 
 		
 		commands := Aa{
@@ -113,6 +115,7 @@ func splitMultipleCommandString(input string) (res []Aa, tempInp string, err err
 			raw: tempInp[:endIndex+2],
 		}
 		res= append(res, commands)
+		tempInp = tempInp[endIndex+2:]
 	default:
 		fmt.Println("unsupported break")
 		break loop;
