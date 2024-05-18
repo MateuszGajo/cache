@@ -103,6 +103,7 @@ func (conn MyConn)  replConfConfirm() (err error) {
 }
 
 func (conn MyConn)  replConfAct() (err error) {
+	fmt.Println("This should be first")
 	result :=  BuildRESPArray([]string{"REPLCONF", "ACK",  strconv.Itoa(byteParsed)})
 	_, err = conn.Write([]byte(result))
 	return err
