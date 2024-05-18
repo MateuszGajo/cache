@@ -281,7 +281,10 @@ func handleConenction(conn MyConn, serverCon Server) {
 		
 		for _,v := range comamndInput.commandStr {
 		err = executeCommand(v.command,comamndInput.commandByte, conn, serverCon)
-		byteParsed += v.length
+		if(Commands(strings.ToUpper(v.command[0])) != RDBFILE && Commands(strings.ToUpper(v.command[0])) != FULLRESYNC) {
+			byteParsed += v.length
+		}
+	
 		if err != nil {
 			fmt.Println("Error while reaidng", err)
 			break;
