@@ -41,7 +41,6 @@ func splitMultipleCommandString(input string) (res []Aa, tempInp string, err err
 				}
 				res= append(res, commands)
 			}else {
-				byteParsed += len(tempInp[:endIndex])
 				commands := Aa{
 					command: []string{tempInp[1:index]},
 					length: len(tempInp[:endIndex]),
@@ -64,7 +63,6 @@ func splitMultipleCommandString(input string) (res []Aa, tempInp string, err err
 			//normal command
 			endIndex +=2
 			
-			byteParsed += len(tempInp[:endIndex])
 			commands := Aa{
 				command: []string{tempInp[index+delimiterLen:endIndex]},
 				length: len(tempInp[:endIndex]),
