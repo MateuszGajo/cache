@@ -7,7 +7,6 @@ import (
 	"math/rand/v2"
 	"net"
 	"os"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -28,13 +27,13 @@ const (
 var CLRF string
 
 func init() {
-    os := runtime.GOOS
+    // os := runtime.GOOS
 
-    if os == "windows" {
-        CLRF = "\\r\\n" // fix this
-    } else {
+    // if os == "windows" {
+    //     CLRF = "\\r\\n" // fix this
+    // } else {
         CLRF = "\r\n"
-    }
+    // }
 }
 
 type CustomSetStore struct {
@@ -202,10 +201,12 @@ type MyConn struct {
 	ignoreWrites bool
 }
 
+var tempRead string = ""
 func readInput(conn net.Conn) (CommandInput, error){
 	buf := make([]byte, 1024)
 	n, err := conn.Read(buf)
 	//rething read what about command seinding more than 1 command, we can read half of command :/
+	// i gues we need to reading and then processing of commands. if there is something left we need to acumulate it
 	if err != nil {
 		fmt.Print("what we read", string(buf[:n]))
 		return CommandInput{}, err
@@ -221,7 +222,7 @@ func readInput(conn net.Conn) (CommandInput, error){
 		}, nil
 	}
 
-	command, err = splitMultipleCommandString(input)
+	command, tempRead, err = splitMultipleCommandString2(tempRead + input)
 
 	if err != nil {
 		return CommandInput{}, err
