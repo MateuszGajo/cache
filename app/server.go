@@ -22,6 +22,8 @@ const (
 	INFO Commands = "INFO"
 	REPLCONF Commands = "REPLCONF"
 	PSYNC Commands = "PSYNC"
+	FULLRESYNC Commands = "FULLRESYNC"
+	RDBFILE Commands = "RDB-FILE"
 )
 
 var CLRF string
@@ -132,7 +134,7 @@ func handShake(){
 	}
 
 	conn.Write([]byte("*3"+CLRF+"$5"+CLRF+"PSYNC"+CLRF+"$1"+CLRF+"?"+CLRF+"$2"+CLRF+"-1"+CLRF))
-	readSyncResp(conn)
+	// readSyncResp(conn)
 
 	go handleConenction(MyConn{Conn: conn, ignoreWrites: false, ID: strconv.Itoa(rand.IntN(100))}, Server{}) 
 }
@@ -205,8 +207,6 @@ var tempRead string = ""
 func readInput(conn net.Conn) (CommandInput, error){
 	buf := make([]byte, 1024)
 	n, err := conn.Read(buf)
-	//rething read what about command seinding more than 1 command, we can read half of command :/
-	// i gues we need to reading and then processing of commands. if there is something left we need to acumulate it
 	if err != nil {
 		fmt.Print("what we read", string(buf[:n]))
 		return CommandInput{}, err
@@ -222,24 +222,11 @@ func readInput(conn net.Conn) (CommandInput, error){
 		}, nil
 	}
 
-	command, tempRead, err = splitMultipleCommandString2(tempRead + input)
+	command, tempRead, err = splitMultipleCommandString(tempRead + input)
 
 	if err != nil {
 		return CommandInput{}, err
 	}
-	// switch(input[0]) {
-	// case 43:
-	// 	command = append(command,RESPSimpleString(input))
-	// case 36:
-	// 	command = RESPBulkString(input)
-	// case 42:
-	// 	command = RESPArray(input)
-	// default:
-	// 	fmt.Print("Unknown RESP enconfing")
-	// }
-
-	fmt.Println("what we printing here")
-	fmt.Println(command)
 
 	return CommandInput{
 		commandStr: command,
@@ -332,6 +319,10 @@ func executeCommand(commandI []string, bytes string, conn MyConn, serverCon Serv
 	case PSYNC: 
 		err = conn.Psync(serverCon)
 		replConn[conn.ID] = conn;
+	case FULLRESYNC:
+		// empty for now
+	case RDBFILE:
+		// empty for now
 	default: {
 		err = errors.New(fmt.Sprintf("invalid command received:%v", command))
 		fmt.Println("invalid command received:", command)
