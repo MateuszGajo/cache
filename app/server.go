@@ -281,6 +281,7 @@ func handleConenction(conn MyConn, serverCon Server) {
 		
 		for _,v := range comamndInput.commandStr {
 		err = executeCommand(v.command,comamndInput.commandByte, conn, serverCon)
+		byteParsed += v.length
 		if err != nil {
 			fmt.Println("Error while reaidng", err)
 			break;
