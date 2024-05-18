@@ -27,6 +27,7 @@ const (
 )
 
 var CLRF string
+var byteParsed int = 0
 
 func init() {
     // os := runtime.GOOS
@@ -97,7 +98,7 @@ func handShake(){
 		conn.Close()
 		return
 	}
-	args := inputComm.commandStr[0]
+	args := inputComm.commandStr[0].command
 
 	if args[0] != "PONG" {
 		fmt.Print("Response its invalid")
@@ -113,7 +114,7 @@ func handShake(){
 		conn.Close()
 		return
 	}
-	args = inputComm.commandStr[0]
+	args = inputComm.commandStr[0].command
 
 	if args[0] != "OK" {
 		fmt.Printf("Response its invalid, expected ok we got:%v", args[0])
@@ -127,14 +128,13 @@ func handShake(){
 		conn.Close()
 		return
 	}
-	args = inputComm.commandStr[0]
+	args = inputComm.commandStr[0].command
 	if args[0] != "OK" {
 		fmt.Printf("Response its invalid, expected ok we got:%v", args[0])
 		os.Exit(1)
 	}
 
 	conn.Write([]byte("*3"+CLRF+"$5"+CLRF+"PSYNC"+CLRF+"$1"+CLRF+"?"+CLRF+"$2"+CLRF+"-1"+CLRF))
-	// readSyncResp(conn)
 
 	go handleConenction(MyConn{Conn: conn, ignoreWrites: false, ID: strconv.Itoa(rand.IntN(100))}, Server{}) 
 }
@@ -194,7 +194,7 @@ func main() {
 }
 
 type CommandInput struct{
-	commandStr [][]string
+	commandStr []Aa
 	commandByte string
 }
 type MyConn struct {
@@ -212,7 +212,7 @@ func readInput(conn net.Conn) (CommandInput, error){
 		return CommandInput{}, err
 	}
 
-	command := [][]string {}
+	command := []Aa {}
 	input :=string(buf[:n])
 
 	if(len(input) ==0){ 
@@ -280,7 +280,7 @@ func handleConenction(conn MyConn, serverCon Server) {
 		}
 		
 		for _,v := range comamndInput.commandStr {
-		err = executeCommand(v,comamndInput.commandByte, conn, serverCon)
+		err = executeCommand(v.command,comamndInput.commandByte, conn, serverCon)
 		if err != nil {
 			fmt.Println("Error while reaidng", err)
 			break;

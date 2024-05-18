@@ -7,8 +7,14 @@ import (
 	"strings"
 )
 
+type Aa struct {
+	command []string
+	length int
+	raw string
+}
 
-func splitMultipleCommandString(input string) (res [][]string, tempInp string, err error) {
+
+func splitMultipleCommandString(input string) (res []Aa, tempInp string, err error) {
 	tempInp = input
 	
 	delimiterLen := len(CLRF)
@@ -25,15 +31,26 @@ func splitMultipleCommandString(input string) (res [][]string, tempInp string, e
 			if(index == -1) {
 				break;
 			}
-			commands := []string{ }
+
 			endIndex:= index+delimiterLen
 			if strings.Contains(tempInp, "FULLRESYNC") {
-				commands = strings.Split(tempInp[1:index], " ")
+				commands := Aa{
+					command: strings.Split(tempInp[1:index], " "),
+					length: len(tempInp[:endIndex]),
+					raw: tempInp[endIndex:],
+				}
+				res= append(res, commands)
 			}else {
-				commands = append(commands, tempInp[1:index])
+				byteParsed += len(tempInp[:endIndex])
+				commands := Aa{
+					command: []string{tempInp[1:index]},
+					length: len(tempInp[:endIndex]),
+					raw: tempInp[:endIndex],
+				}
+				res= append(res, commands)
 			}
 			
-			res= append(res, commands)
+		
 			tempInp = tempInp[endIndex:]
 	case 36:
 		fmt.Println("Wchodzimy 2")
@@ -45,17 +62,27 @@ func splitMultipleCommandString(input string) (res [][]string, tempInp string, e
 		endIndex := commLen + index + delimiterLen
 		if(len(tempInp) >= endIndex + delimiterLen && tempInp[endIndex +1] == 13 && tempInp[endIndex +2] == 10) {
 			//normal command
-			commands := []string{ tempInp[index+delimiterLen:endIndex]}
-			res= append(res, commands)
 			endIndex +=2
 			tempInp = tempInp[endIndex:]
+			byteParsed += len(tempInp[:endIndex])
+			commands := Aa{
+				command: []string{tempInp[index+delimiterLen:endIndex]},
+				length: len(tempInp[:endIndex]),
+				raw: tempInp[:endIndex],
+			}
+			res= append(res, commands)
 		} else {
 			//rdb file
-			commands := []string{ "rdb-file", tempInp[index+ delimiterLen:endIndex]}
 			fmt.Println(commLen, endIndex)
 			fmt.Println(len(tempInp))
-			res= append(res, commands)
 			tempInp = tempInp[endIndex:]
+
+			commands := Aa{
+				command: []string{"rdb-file", tempInp[index+ delimiterLen:endIndex]},
+				length: len(tempInp[:endIndex]),
+				raw: tempInp[:endIndex],
+			}
+			res= append(res, commands)
 		}
 
 	case 42:
@@ -77,8 +104,15 @@ func splitMultipleCommandString(input string) (res [][]string, tempInp string, e
 			for i:=2;i<len(parts);i+=2 {
 				temp = append(temp, parts[i])
 			}
-		res= append(res, temp)
 		tempInp = tempInp[endIndex+2:]
+
+		
+		commands := Aa{
+			command: temp,
+			length: len(tempInp[:endIndex+2]),
+			raw: tempInp[:endIndex+2],
+		}
+		res= append(res, commands)
 	default:
 		fmt.Println("unsupported break")
 		break loop;
