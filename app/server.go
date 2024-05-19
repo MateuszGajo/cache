@@ -77,6 +77,8 @@ func handShake(){
 	fmt.Println("tcp", replica.Address + ":" + replica.Port)
 	conn, err := net.Dial("tcp", replica.Address + ":" + replica.Port)
 
+	defer conn.Close()
+
 	if err != nil {
 		fmt.Printf("cannot connect to %v:%v", replica.Address, replica.Port)
 	}
@@ -84,12 +86,10 @@ func handShake(){
 	_, err = conn.Write([]byte("*1"+CLRF+"$4"+CLRF+"ping"+CLRF))
 
 	if err != nil {
-		fmt.Print("1 error while pinging master replica", err)
+		fmt.Print("error while pinging master replica", err)
 		conn.Close()
 		return
 	}
-
-	fmt.Print("where problem 1 ?")
 
 	inputComm, err := readInput(conn)
 	if err != nil {
@@ -103,8 +103,6 @@ func handShake(){
 		fmt.Print("Response its invalid")
 		os.Exit(1)
 	}
-
-	fmt.Print("where problem 2?")
 
 	conn.Write([]byte("*3"+CLRF+"$8"+CLRF+"REPLCONF"+CLRF+"$14"+CLRF+"listening-port"+CLRF+"$4"+CLRF + strconv.Itoa((port)) + CLRF)) // lets build it
 	inputComm, err = readInput(conn)
@@ -253,13 +251,6 @@ func propagte (conn net.Conn, command []byte) {
 	}
 }
 
-func (conn MyConn) Write(b []byte) (n int, err error) {
-	if conn.ignoreWrites {
-		return len(b), nil
-	}
-	return conn.Conn.Write(b)
-}
-
 var whiteReplCommands = map[Commands]bool{SET: true}
 var handshakeSyncCommands = map[Commands]bool{RDBFILE: true, FULLRESYNC: true}
 
@@ -301,6 +292,7 @@ func executeCommand(commandDetails  CommandDetails, bytes string, conn MyConn, s
 		}
 
 	command := Commands(strings.ToUpper(args[0]))
+
 	if whiteReplCommands[command] && replConn != nil {
 		propagte(conn, []byte(bytes))
 	}
