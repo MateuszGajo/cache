@@ -194,7 +194,7 @@ func main() {
 }
 
 type CommandInput struct{
-	commandStr []Aa
+	commandStr []CommandDetails
 	commandByte string
 }
 type MyConn struct {
@@ -212,7 +212,7 @@ func readInput(conn net.Conn) (CommandInput, error){
 		return CommandInput{}, err
 	}
 
-	command := []Aa {}
+	command := []CommandDetails {}
 	input :=string(buf[:n])
 
 	if(len(input) ==0){ 
@@ -280,11 +280,8 @@ func handleConenction(conn MyConn, serverCon Server) {
 		}
 		
 		for _,v := range comamndInput.commandStr {
-		err = executeCommand(v.command,comamndInput.commandByte, conn, serverCon)
-		if(Commands(strings.ToUpper(v.command[0])) != RDBFILE && Commands(strings.ToUpper(v.command[0])) != FULLRESYNC) {
-			fmt.Println("is it for some reason first?")
-			byteParsed += v.length
-		}
+		err = executeCommand(v,comamndInput.commandByte, conn, serverCon)
+
 	
 		if err != nil {
 			fmt.Println("Error while reaidng", err)
@@ -295,8 +292,8 @@ func handleConenction(conn MyConn, serverCon Server) {
 	}
 }
 
-func executeCommand(commandI []string, bytes string, conn MyConn, serverCon Server) (err error){
-	args := commandI
+func executeCommand(commandDetails  CommandDetails, bytes string, conn MyConn, serverCon Server) (err error){
+	args := commandDetails.command
 
 		if len(args) == 0 {
 			fmt.Println("No argument passed")
@@ -333,6 +330,9 @@ func executeCommand(commandI []string, bytes string, conn MyConn, serverCon Serv
 		fmt.Println("invalid command received:", command)
 		conn.Write([]byte("-ERR unknown command\r\n"))
 	}
+	}
+	if(command != RDBFILE && command != FULLRESYNC) {
+		byteParsed += commandDetails.length
 	}
 	
 	if err != nil {

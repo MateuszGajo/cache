@@ -7,14 +7,14 @@ import (
 	"strings"
 )
 
-type Aa struct {
+type CommandDetails struct {
 	command []string
 	length int
 	raw string
 }
 
 
-func splitMultipleCommandString(input string) (res []Aa, tempInp string, err error) {
+func splitMultipleCommandString(input string) (res []CommandDetails, tempInp string, err error) {
 	tempInp = input
 	
 	delimiterLen := len(CLRF)
@@ -34,14 +34,14 @@ func splitMultipleCommandString(input string) (res []Aa, tempInp string, err err
 
 			endIndex:= index+delimiterLen
 			if strings.Contains(tempInp, "FULLRESYNC") {
-				commands := Aa{
+				commands := CommandDetails{
 					command: strings.Split(tempInp[1:index], " "),
 					length: len(tempInp[:endIndex]),
 					raw: tempInp[endIndex:],
 				}
 				res= append(res, commands)
 			}else {
-				commands := Aa{
+				commands := CommandDetails{
 					command: []string{tempInp[1:index]},
 					length: len(tempInp[:endIndex]),
 					raw: tempInp[:endIndex],
@@ -63,7 +63,7 @@ func splitMultipleCommandString(input string) (res []Aa, tempInp string, err err
 			//normal command
 			endIndex +=2
 			
-			commands := Aa{
+			commands := CommandDetails{
 				command: []string{tempInp[index+delimiterLen:endIndex]},
 				length: len(tempInp[:endIndex]),
 				raw: tempInp[:endIndex],
@@ -76,7 +76,7 @@ func splitMultipleCommandString(input string) (res []Aa, tempInp string, err err
 			fmt.Println(len(tempInp))
 			
 
-			commands := Aa{
+			commands := CommandDetails{
 				command: []string{"rdb-file", tempInp[index+ delimiterLen:endIndex]},
 				length: len(tempInp[:endIndex]),
 				raw: tempInp[:endIndex],
@@ -107,7 +107,7 @@ func splitMultipleCommandString(input string) (res []Aa, tempInp string, err err
 		
 
 		
-		commands := Aa{
+		commands := CommandDetails{
 			command: temp,
 			length: len(tempInp[:endIndex+2]),
 			raw: tempInp[:endIndex+2],
