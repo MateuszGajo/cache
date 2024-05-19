@@ -6,6 +6,19 @@ import (
 	"testing"
 )
 
+func TestSingleCommand1(t *testing.T) {
+	tmpString := fmt.Sprintf("+ping/r/n")
+
+	resp, _,_ := splitMultipleCommandString(tmpString)
+
+	fmt.Print(resp)
+
+	if !reflect.DeepEqual(resp[0].command, []string{"set", "abc", "def"} ){
+		t.Fatalf("expected %v, got: %v",  []string{"set", "abc", "def"}, resp[0].command)
+	}
+
+}
+
 func TestSingleCommand(t *testing.T) {
 	tmpString := fmt.Sprintf("*3%v$3%vset%v$3%vabc%v$3%vdef%v", CLRF,CLRF,CLRF,CLRF,CLRF,CLRF, CLRF)
 

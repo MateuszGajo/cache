@@ -51,6 +51,9 @@ func handleConenction(conn MyConn, serverCon Server) {
 	for {
 		comamndInput, err := readInput(conn)
 
+		fmt.Println("read")
+		fmt.Println(comamndInput)
+
 		if err != nil {
 			fmt.Println("Error while reaidng", err)
 			break

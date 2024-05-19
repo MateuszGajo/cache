@@ -65,12 +65,18 @@ func splitMultipleCommandString(input string) (res []CommandDetails, tempInp str
 	switch (indicator) {
 	case 43:
 		endIndex, command = handleSimpleString(tempInp)
+		fmt.Println("43 command")
+		fmt.Println(command)
 			
 	case 36:
 		endIndex, command = handleBulkString(tempInp)
+		fmt.Println("36 command")
+		fmt.Println(command)
 
 	case 42:
 		endIndex, command = handleRespArray(tempInp)
+		fmt.Println("42 command")
+		fmt.Println(command)
 	default:
 		fmt.Println("unsupported break")
 		break loop;
@@ -88,7 +94,11 @@ func splitMultipleCommandString(input string) (res []CommandDetails, tempInp str
 
 func handleSimpleString(input string) (endIndex int, command CommandDetails) {
 	index := strings.Index(input, CLRF)
+	fmt.Println("input")
+	fmt.Println([]byte(input))
+	fmt.Println([]byte(CLRF))
 	if(index == -1) {
+		fmt.Println("inside?")
 		endIndex = -1
 		return endIndex, command
 	}
@@ -148,6 +158,7 @@ func handleBulkString(input string) (endIndex int, command CommandDetails) {
 func handleRespArray(input string) (endIndex int, command CommandDetails) {
 	index := strings.Index(input, CLRF)
 	if (index == -1) {
+		fmt.Println("1")
 		endIndex = -1
 		return endIndex, command
 	}
@@ -155,6 +166,7 @@ func handleRespArray(input string) (endIndex int, command CommandDetails) {
 	commLen, _ := strconv.Atoi(input[1:index])
 	endIndex = findOccurance(input, "\r",commLen *2)
 	if(endIndex == -1) {
+		fmt.Println("2")
 		endIndex = -1
 		return endIndex, command
 	}
