@@ -26,7 +26,7 @@ var handshakeSyncCommands = map[Commands]bool{RDBFILE: true, FULLRESYNC: true}
 var replConn map[string]net.Conn = make(map[string]net.Conn)
 var byteParsed int = 0
 
-func propagte (conn net.Conn, command []byte) {
+func propagte (command []byte) {
 	fmt.Println("propagte")
 	if replConn == nil {
 		return
@@ -79,7 +79,7 @@ func executeCommand(commandDetails  CommandDetails, bytes string, conn MyConn, s
 	command := Commands(strings.ToUpper(args[0]))
 
 	if whiteReplCommands[command] && replConn != nil {
-		propagte(conn, []byte(bytes))
+		propagte([]byte(bytes))
 	}
 
 	switch(command) {

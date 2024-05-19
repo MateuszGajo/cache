@@ -55,113 +55,129 @@ func readInput(conn net.Conn) (CommandInput, error){
 
 func splitMultipleCommandString(input string) (res []CommandDetails, tempInp string, err error) {
 	tempInp = input
+	endIndex := 0
+	var command CommandDetails
 	
-	delimiterLen := len(CLRF)
 
 	loop: for (len(tempInp) > 0){
 		indicator := tempInp[0]
-		fmt.Println("wchodzimy!!!")
-		fmt.Printf("%q",tempInp)
 
 	switch (indicator) {
 	case 43:
-			fmt.Println("Wchodzimy 1")
-			index := strings.Index(tempInp, CLRF)
-			if(index == -1) {
-				break;
-			}
-
-			endIndex:= index+delimiterLen
-			if strings.Contains(tempInp, "FULLRESYNC") {
-				commands := CommandDetails{
-					command: strings.Split(tempInp[1:index], " "),
-					length: len(tempInp[:endIndex]),
-					raw: tempInp[endIndex:],
-				}
-				res= append(res, commands)
-			}else {
-				commands := CommandDetails{
-					command: []string{tempInp[1:index]},
-					length: len(tempInp[:endIndex]),
-					raw: tempInp[:endIndex],
-				}
-				res= append(res, commands)
-			}
+		endIndex, command = handleSimpleString(tempInp)
 			
-		
-			tempInp = tempInp[endIndex:]
 	case 36:
-		fmt.Println("Wchodzimy 2")
-		index := strings.Index(tempInp, CLRF)
-		if(index == -1) {
-			break loop;
-		}
-		commLen, _ := strconv.Atoi(tempInp[1:index])
-		endIndex := commLen + index + delimiterLen
-		if(len(tempInp) >= endIndex + delimiterLen && tempInp[endIndex +1] == 13 && tempInp[endIndex +2] == 10) {
-			//normal command
-			endIndex +=2
-			
-			commands := CommandDetails{
-				command: []string{tempInp[index+delimiterLen:endIndex]},
-				length: len(tempInp[:endIndex]),
-				raw: tempInp[:endIndex],
-			}
-			res= append(res, commands)
-			tempInp = tempInp[endIndex:]
-		} else {
-			//rdb file
-			fmt.Println(commLen, endIndex)
-			fmt.Println(len(tempInp))
-			
-
-			commands := CommandDetails{
-				command: []string{"rdb-file", tempInp[index+ delimiterLen:endIndex]},
-				length: len(tempInp[:endIndex]),
-				raw: tempInp[:endIndex],
-			}
-			res= append(res, commands)
-			tempInp = tempInp[endIndex:]
-		}
+		endIndex, command = handleBulkString(tempInp)
 
 	case 42:
-		fmt.Println("Wchodziy?")
-		fmt.Println(res)
-		index := strings.Index(tempInp, CLRF)
-		fmt.Println("inex", index)
-		if (index == -1) {
-			break loop;
-		}
-		commLen, _ := strconv.Atoi(tempInp[1:index])
-		endIndex := findOccurance(tempInp, "\r",commLen *2)
-		if(endIndex == -1) {
-			break loop;
-		}
-		stringToDo := tempInp[:endIndex]
-		parts := strings.Split(stringToDo, CLRF)
-		temp := []string{}
-			for i:=2;i<len(parts);i+=2 {
-				temp = append(temp, parts[i])
-			}
-		
-
-		
-		commands := CommandDetails{
-			command: temp,
-			length: len(tempInp[:endIndex+2]),
-			raw: tempInp[:endIndex+2],
-		}
-		res= append(res, commands)
-		tempInp = tempInp[endIndex+2:]
+		endIndex, command = handleRespArray(tempInp)
 	default:
 		fmt.Println("unsupported break")
 		break loop;
 	}
+	if(endIndex == -1) {
+		break loop;
+	}
+	res= append(res, command)
+	tempInp = tempInp[endIndex:]
 }
 
 
 	return res,tempInp, nil
 }
+
+func handleSimpleString(input string) (endIndex int, command CommandDetails) {
+	index := strings.Index(input, CLRF)
+	if(index == -1) {
+		endIndex = -1
+		return endIndex, command
+	}
+
+	endIndex = index+ len(CLRF)
+	if strings.Contains(input, "FULLRESYNC") {
+		command = CommandDetails{
+			command: strings.Split(input[1:index], " "),
+			length: len(input[:endIndex]),
+			raw: input[endIndex:],
+		}
+	}else {
+		command = CommandDetails{
+			command: []string{input[1:index]},
+			length: len(input[:endIndex]),
+			raw: input[:endIndex],
+		}
+	}
+	
+	return endIndex, command
+}
+
+func handleBulkString(input string) (endIndex int, command CommandDetails) {
+		index := strings.Index(input, CLRF)
+		if(index == -1) {
+			endIndex = -1
+			return endIndex, command
+		}
+
+		commLen, _ := strconv.Atoi(input[1:index])
+
+		delimiterLen := len(CLRF)
+		endIndex = commLen + index + delimiterLen
+
+		if(len(input) >= endIndex + delimiterLen && input[endIndex +1] == 13 && input[endIndex +2] == 10) {
+			//normal command
+			endIndex +=2
+			
+			command = CommandDetails{
+				command: []string{input[index+delimiterLen:endIndex]},
+				length: len(input[:endIndex]),
+				raw: input[:endIndex],
+			}
+		} else {
+			//rdb file			
+
+			command = CommandDetails{
+				command: []string{"rdb-file", input[index+ delimiterLen:endIndex]},
+				length: len(input[:endIndex]),
+				raw: input[:endIndex],
+			}
+		}
+
+		return endIndex, command
+}
+
+func handleRespArray(input string) (endIndex int, command CommandDetails) {
+	index := strings.Index(input, CLRF)
+	if (index == -1) {
+		endIndex = -1
+		return endIndex, command
+	}
+
+	commLen, _ := strconv.Atoi(input[1:index])
+	endIndex = findOccurance(input, "\r",commLen *2)
+	if(endIndex == -1) {
+		endIndex = -1
+		return endIndex, command
+	}
+
+	stringToDo := input[:endIndex]
+	parts := strings.Split(stringToDo, CLRF)
+	temp := []string{}
+		for i:=2;i<len(parts);i+=2 {
+			temp = append(temp, parts[i])
+		}
+	
+
+	
+	command = CommandDetails{
+		command: temp,
+		length: len(input[:endIndex+2]),
+		raw: input[:endIndex+2],
+	}
+
+	return endIndex+2, command
+}
+
+
 
 func findOccurance(input string, delimiter string, occNum int) int {
 		re := regexp.MustCompile(delimiter)
