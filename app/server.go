@@ -79,7 +79,8 @@ func handShake(){
 		fmt.Printf("cannot connect to %v:%v", replica.Address, replica.Port)
 	}
 
-	_, err = conn.Write([]byte("*1"+CLRF+"$4"+CLRF+"ping"+CLRF))
+	// _, err = conn.Write([]byte("*1"+CLRF+"$4"+CLRF+"ping"+CLRF))
+	_, err = conn.Write([]byte(BuildRESPArray([]string{"ping"})))
 
 	if err != nil {
 		fmt.Print("error while pinging master replica", err)
@@ -100,7 +101,8 @@ func handShake(){
 		os.Exit(1)
 	}
 
-	conn.Write([]byte("*3"+CLRF+"$8"+CLRF+"REPLCONF"+CLRF+"$14"+CLRF+"listening-port"+CLRF+"$4"+CLRF + strconv.Itoa((port)) + CLRF)) // lets build it
+	// conn.Write([]byte("*3"+CLRF+"$8"+CLRF+"REPLCONF"+CLRF+"$14"+CLRF+"listening-port"+CLRF+"$4"+CLRF + strconv.Itoa((port)) + CLRF)) 
+	conn.Write([]byte(BuildRESPArray([]string{"REPLCONF","listening-port",strconv.Itoa((port))}))) // lets build it
 	inputComm, err = readInput(conn)
 	if err != nil {
 		fmt.Print("error while replConf listening-port master replica")
@@ -114,20 +116,23 @@ func handShake(){
 		os.Exit(1)
 	}
 
-	conn.Write([]byte("*3"+CLRF+"$8"+CLRF+"REPLCONF"+CLRF+"$4"+CLRF+"capa"+CLRF+"$6"+CLRF+"psync2"+CLRF)) // same lets build it
+	// conn.Write([]byte("*3"+CLRF+"$8"+CLRF+"REPLCONF"+CLRF+"$4"+CLRF+"capa"+CLRF+"$6"+CLRF+"psync2"+CLRF)) // same lets build it
+	conn.Write([]byte(BuildRESPArray([]string {"REPLCONF","capa","psync2"}))) // same lets build it
 	inputComm,err = readInput(conn)
 	if err != nil {
 		fmt.Print("error while replConf capa  master replica")
 		conn.Close()
 		return
 	}
+
 	args = inputComm.commandStr[0].command
 	if args[0] != "OK" {
 		fmt.Printf("Response its invalid, expected ok we got:%v", args[0])
 		os.Exit(1)
 	}
 
-	conn.Write([]byte("*3"+CLRF+"$5"+CLRF+"PSYNC"+CLRF+"$1"+CLRF+"?"+CLRF+"$2"+CLRF+"-1"+CLRF))
+	// conn.Write([]byte("*3"+CLRF+"$5"+CLRF+"PSYNC"+CLRF+"$1"+CLRF+"?"+CLRF+"$2"+CLRF+"-1"+CLRF))
+	conn.Write([]byte(BuildRESPArray([]string{"PSYNC","?","-1"})))
 
 	go handleConenction(MyConn{Conn: conn, ignoreWrites: false, ID: strconv.Itoa(rand.IntN(100))}, Server{}) 
 }
