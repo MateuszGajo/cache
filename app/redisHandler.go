@@ -12,11 +12,11 @@ var EMPTY_RDB_FILE_BASE64 string = "UkVESVMwMDEx+glyZWRpcy12ZXIFNy4yLjD6CnJlZGlz
 // find a way to not respond to master command
 // write integraiton tests
 func (conn MyConn) Ping() (err error) {
-
-	// if !connectionFromMaster {
+	connectionFromMaster := strings.Contains(conn.RemoteAddr().String(), "6379")
+	if !connectionFromMaster {
 		_, err = conn.Write([]byte(BuildSimpleString("PONG")))
 		return err
-	// }
+	}
 	return nil
 }
 
