@@ -156,7 +156,7 @@ func (conn MyConn) Psync(serverCon Server) (err error) {
 
 func (conn MyConn) Wait() (err error) {
 	// build wait
-	conn.Write([]byte(BuildRespInt(0)))
+	conn.Write([]byte(BuildRespInt(len(replConn))))
 
 	return err
 }
