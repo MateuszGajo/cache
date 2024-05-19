@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"math/rand/v2"
@@ -261,7 +260,8 @@ func (conn MyConn) Write(b []byte) (n int, err error) {
 	return conn.Conn.Write(b)
 }
 
-var whitelistProp = map[Commands]bool{"SET": true}
+var whiteReplCommands = map[Commands]bool{SET: true}
+var handshakeSyncCommands = map[Commands]bool{RDBFILE: true, FULLRESYNC: true}
 
 func handleConenction(conn MyConn, serverCon Server) {
 	defer func(conn MyConn) {
@@ -301,7 +301,7 @@ func executeCommand(commandDetails  CommandDetails, bytes string, conn MyConn, s
 		}
 
 	command := Commands(strings.ToUpper(args[0]))
-	if whitelistProp[command] && replConn != nil {
+	if whiteReplCommands[command] && replConn != nil {
 		propagte(conn, []byte(bytes))
 	}
 
@@ -326,12 +326,12 @@ func executeCommand(commandDetails  CommandDetails, bytes string, conn MyConn, s
 	case RDBFILE:
 		// empty for now
 	default: {
-		err = errors.New(fmt.Sprintf("invalid command received:%v", command))
+		err = fmt.Errorf("invalid command received:%v", command)
 		fmt.Println("invalid command received:", command)
 		conn.Write([]byte("-ERR unknown command\r\n"))
 	}
 	}
-	if(command != RDBFILE && command != FULLRESYNC) {
+	if(!handshakeSyncCommands[command]) {
 		byteParsed += commandDetails.length
 	}
 	
