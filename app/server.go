@@ -266,7 +266,7 @@ var handshakeSyncCommands = map[Commands]bool{RDBFILE: true, FULLRESYNC: true}
 func handleConenction(conn MyConn, serverCon Server) {
 	defer func(conn MyConn) {
 		fmt.Print("lets close it")
-		// delete(replConn, conn.ID)
+		delete(replConn, conn.ID)
 		conn.Close()
 	}(conn)
 
