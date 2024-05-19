@@ -10,8 +10,10 @@ import (
 
 var EMPTY_RDB_FILE_BASE64 string = "UkVESVMwMDEx+glyZWRpcy12ZXIFNy4yLjD6CnJlZGlzLWJpdHPAQPoFY3RpbWXCbQi8ZfoIdXNlZC1tZW3CsMQQAPoIYW9mLWJhc2XAAP/wbjv+wP9aog=="
 // find a way to not respond to master command
-// write integraiton tests
+// write integration test
 func (conn MyConn) Ping() (err error) {
+
+	//let thing o better solution
 	connectionFromMaster := strings.Contains(conn.RemoteAddr().String(), "6379")
 	if !connectionFromMaster {
 		_, err = conn.Write([]byte(BuildSimpleString("PONG")))
