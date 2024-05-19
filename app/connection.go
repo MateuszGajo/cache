@@ -18,6 +18,7 @@ const (
 	PSYNC Commands = "PSYNC"
 	FULLRESYNC Commands = "FULLRESYNC"
 	RDBFILE Commands = "RDB-FILE"
+	WAIT Commands = "WAIT"
 )
 
 
@@ -105,6 +106,8 @@ func executeCommand(commandDetails  CommandDetails, bytes string, conn MyConn, s
 		// empty for now
 	case RDBFILE:
 		// empty for now
+	case WAIT:
+		err = conn.Wait()
 	default: {
 		err = fmt.Errorf("invalid command received:%v", command)
 		fmt.Println("invalid command received:", command)
