@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net"
 	"regexp"
 	"strconv"
 	"strings"
@@ -11,6 +12,44 @@ type CommandDetails struct {
 	command []string
 	length int
 	raw string
+}
+
+var tempRead string = ""
+
+type CommandInput struct{
+	commandStr []CommandDetails
+	commandByte string
+}
+
+func readInput(conn net.Conn) (CommandInput, error){
+	buf := make([]byte, 1024)
+	n, err := conn.Read(buf)
+	if err != nil {
+		fmt.Print("what we read", string(buf[:n]))
+		return CommandInput{}, err
+	}
+
+	command := []CommandDetails {}
+	input :=string(buf[:n])
+
+	if(len(input) ==0){ 
+		return CommandInput{
+			commandStr: command,
+			commandByte: input,
+		}, nil
+	}
+
+	command, tempRead, err = splitMultipleCommandString(tempRead + input)
+
+	if err != nil {
+		return CommandInput{}, err
+	}
+
+	return CommandInput{
+		commandStr: command,
+		commandByte: input,
+	}, nil
+
 }
 
 
