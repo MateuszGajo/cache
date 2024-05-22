@@ -179,7 +179,7 @@ func (conn MyConn) Psync(serverCon Server) (err error) {
 
 func (conn MyConn) Wait(args []string) (err error) {
 	// build wait
-	conn.Write([]byte(BuildRespInt(len(replConn))))
+	// conn.Write([]byte(BuildRespInt(len(replConn))))
 
 	acksRequired, err := strconv.Atoi(args[1])
 	if err != nil {
