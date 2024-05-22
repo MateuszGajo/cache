@@ -56,7 +56,7 @@ func TestG(t *testing.T) {
 	// }(conn)
 
 	conn.Write([]byte("*3\r\n$3\r\nset\r\n$3\r\nabc\r\n$3\r\ndef\r\n"))
-	conn.Write([]byte("*3\r\n$4\r\nwait\r\n$1\r\n1\r\n$3\r\n300\r\n"))
+	conn.Write([]byte("*3\r\n$4\r\nwait\r\n$2\r\n1\r\n$3\r\n300\r\n"))
 
 	buffer := make([]byte, 1000)
 

@@ -4,7 +4,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"net"
 	"strconv"
 	"strings"
 	"time"
@@ -193,8 +192,10 @@ func (conn MyConn) Wait(args []string) (err error) {
 
 
 	for _, v := range replConn {
-		go func(v net.Conn){
-			v.Write([]byte(BuildRESPArray([]string{"REPLCONF", "GETACK", "*"})))
+		go func(v *ReplicaConn){
+			if(v.bytesWrite >0) {
+				v.Write([]byte(BuildRESPArray([]string{"REPLCONF", "GETACK", "*"})))
+			}
 		}(v)
 	}
 
@@ -214,7 +215,7 @@ func (conn MyConn) Wait(args []string) (err error) {
 		case <- ticker.C:
 			totalAcked = 0
 			for _, v := range replConn{
-				if(v.bytesWrite < v.byteAck){
+				if(v.bytesWrite >0 && v.bytesWrite == v.byteAck){
 					fmt.Println("total act +1")
 					fmt.Printf("Bytes write, %v \n", v.bytesWrite)
 					fmt.Printf("Bytes ack, %v \n", v.byteAck)
