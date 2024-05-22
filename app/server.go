@@ -6,7 +6,6 @@ import (
 	"math/rand/v2"
 	"net"
 	"os"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -54,13 +53,13 @@ func init(){
 		}
 	}
 
-	os := runtime.GOOS
+	// os := runtime.GOOS
 
-    if os == "windows" {
-        CLRF = "\\r\\n" // fix this
-    } else {
+    // if os == "windows" {
+    //     CLRF = "\\r\\n" // fix this
+    // } else {
         CLRF = "\r\n"
-    }
+    // }
 }
 
 

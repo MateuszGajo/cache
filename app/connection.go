@@ -21,20 +21,36 @@ const (
 	WAIT Commands = "WAIT"
 )
 
+type ReplicaConn struct {
+	net.Conn
+	bytesWrite int
+	byteAck int
+}
+
 
 var whiteReplCommands = map[Commands]bool{SET: true}
 var handshakeSyncCommands = map[Commands]bool{RDBFILE: true, FULLRESYNC: true}
-var replConn map[string]net.Conn = make(map[string]net.Conn)
+var replConn map[string]*ReplicaConn = make(map[string]*ReplicaConn)
 var byteParsed int = 0
 
-func propagte (command []byte) {
+func propagte (command CommandDetails) {
 	fmt.Println("propagte")
 	if replConn == nil {
 		return
 	}
-	fmt.Print(replConn)
+
+
+	for _,v := range replConn {
+		v.bytesWrite += command.length
+		fmt.Println("co tutaj")
+		fmt.Println(v.bytesWrite)
+	}
+	for _,v := range replConn {
+		fmt.Println("co tutaj")
+		fmt.Println(v.bytesWrite)
+	}
 	for _, v := range replConn {
-		_, err := v.Write(command)
+		_, err := v.Write([]byte(command.raw))
 
 		if err != nil {
 			fmt.Print("write error")
@@ -53,7 +69,7 @@ func handleConenction(conn MyConn, serverCon Server) {
 		comamndInput, err := readInput(conn)
 
 		fmt.Println("read")
-		fmt.Println(comamndInput)
+		fmt.Printf("%q",comamndInput)
 
 		if err != nil {
 			fmt.Println("Error while reaidng", err)
@@ -82,9 +98,6 @@ func executeCommand(commandDetails  CommandDetails, bytes string, conn MyConn, s
 
 	command := Commands(strings.ToUpper(args[0]))
 
-	if whiteReplCommands[command] && replConn != nil {
-		propagte([]byte(bytes))
-	}
 
 	switch(command) {
 	case PING:
@@ -101,22 +114,30 @@ func executeCommand(commandDetails  CommandDetails, bytes string, conn MyConn, s
 		err = conn.ReplConf(args)
 	case PSYNC: 
 		err = conn.Psync(serverCon)
-		replConn[conn.ID] = conn;
+		replConn[conn.ID] = &ReplicaConn{
+			Conn: conn,
+			bytesWrite: 0,
+			byteAck: 0,
+			};
 	case FULLRESYNC:
 		// empty for now
 	case RDBFILE:
 		// empty for now
 	case WAIT:
-		err = conn.Wait()
+		err = conn.Wait(args)
 	default: {
 		err = fmt.Errorf("invalid command received:%v", command)
 		fmt.Println("invalid command received:", command)
 		conn.Write([]byte("-ERR unknown command\r\n"))
 	}
 	}
+	if whiteReplCommands[command] && replConn != nil {
+		propagte(commandDetails)
+	}
 	if(!handshakeSyncCommands[command]) {
 		byteParsed += commandDetails.length
 	}
+
 	
 	if err != nil {
 		fmt.Println("Error writing to connection: ", err.Error())

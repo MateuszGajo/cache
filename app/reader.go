@@ -147,6 +147,7 @@ func handleBulkString(input string) (endIndex int, command CommandDetails) {
 }
 
 func handleRespArray(input string) (endIndex int, command CommandDetails) {
+	fmt.Print("handle resp arr")
 	index := strings.Index(input, CLRF)
 	if (index == -1) {
 		fmt.Println("1")
@@ -164,6 +165,8 @@ func handleRespArray(input string) (endIndex int, command CommandDetails) {
 
 	stringToDo := input[:endIndex]
 	parts := strings.Split(stringToDo, CLRF)
+	fmt.Println("parts")
+	fmt.Println(parts)
 	temp := []string{}
 		for i:=2;i<len(parts);i+=2 {
 			temp = append(temp, parts[i])
