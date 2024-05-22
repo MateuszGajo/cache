@@ -209,12 +209,12 @@ func (conn MyConn) Wait(args []string) (err error) {
 		select {
 		case <- timer.C:
 			fmt.Println("timer end1")
-			conn.Write([]byte(BuildRespInt(acksRequired)))
+			conn.Write([]byte(BuildRespInt(totalAcked)))
 			return
 		case <- ticker.C:
 			totalAcked = 0
 			for _, v := range replConn{
-				if(v.bytesWrite <= v.byteAck){
+				if(v.bytesWrite < v.byteAck){
 					fmt.Println("total act +1")
 					fmt.Printf("Bytes write, %v \n", v.bytesWrite)
 					fmt.Printf("Bytes ack, %v \n", v.byteAck)
