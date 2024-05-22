@@ -224,7 +224,7 @@ func (conn MyConn) Wait(args []string) (err error) {
 			if(totalAcked >= acksRequired){
 				fmt.Println("all act good")
 				fmt.Println(acksRequired)
-				conn.Write([]byte(BuildRespInt(acksRequired)))
+				conn.Write([]byte(BuildRespInt(totalAcked)))
 				return
 			}
 			
