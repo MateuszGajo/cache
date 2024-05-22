@@ -125,6 +125,9 @@ func (conn MyConn)  replConfAct(args []string) (err error) {
 	bytes := args[2]
 	for _, rc := range replConn {
 		if rc.RemoteAddr().String() == conn.RemoteAddr().String() {
+			fmt.Println("act bytes for")
+			fmt.Print(rc.RemoteAddr().String())
+			fmt.Println("\n, bytes %v", bytes)
 			conv, _ := strconv.Atoi(bytes)
 			rc.byteAck = conv
 		}
