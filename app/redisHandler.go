@@ -220,7 +220,7 @@ func (conn MyConn) Wait(args []string) (err error) {
 			for _, v := range replConn{
 				fmt.Printf("Bytes write, %v \n", v.bytesWrite)
 					fmt.Printf("Bytes ack, %v \n", v.byteAck)
-				if(v.bytesWrite >0 && v.bytesWrite <= v.byteAck){
+				if( v.bytesWrite <= v.byteAck){
 					fmt.Println("total act +1")
 					
 					totalAcked++
