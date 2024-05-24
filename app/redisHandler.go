@@ -178,8 +178,6 @@ func (conn MyConn) Psync(serverCon Server) (err error) {
 }
 
 func (conn MyConn) Wait(args []string) (err error) {
-	// build wait
-	// conn.Write([]byte(BuildRespInt(len(replConn))))
 
 	acksRequired, err := strconv.Atoi(args[1])
 	if err != nil {
@@ -193,11 +191,13 @@ func (conn MyConn) Wait(args []string) (err error) {
 		return
 	}
 
-
+	getAckMsg := BuildRESPArray([]string{"REPLCONF", "GETACK", "*"})
+	getAckMsgLen := len(getAckMsg)
 	for _, v := range replConn {
 		go func(v *ReplicaConn){
-			if(v.bytesWrite >0) {
-				v.Write([]byte(BuildRESPArray([]string{"REPLCONF", "GETACK", "*"})))
+			if(v.bytesWrite  > 0) {
+				v.Write([]byte(getAckMsg))
+				v.bytesWrite += getAckMsgLen
 			}
 		}(v)
 	}
@@ -218,17 +218,12 @@ func (conn MyConn) Wait(args []string) (err error) {
 		case <- ticker.C:
 			totalAcked = 0
 			for _, v := range replConn{
-				fmt.Printf("Bytes write, %v \n", v.bytesWrite)
-					fmt.Printf("Bytes ack, %v \n", v.byteAck)
-				if( v.bytesWrite <= v.byteAck){
-					fmt.Println("total act +1")
-					
+					bytesWritten := max(0, v.bytesWrite -getAckMsgLen)
+				if( bytesWritten == v.byteAck){					
 					totalAcked++
 				}
 			}
 			if(totalAcked >= acksRequired){
-				fmt.Println("all act good")
-				fmt.Println(acksRequired)
 				conn.Write([]byte(BuildRespInt(totalAcked)))
 				return
 			}
