@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -14,7 +15,7 @@ var EMPTY_RDB_FILE_BASE64 string = "UkVESVMwMDEx+glyZWRpcy12ZXIFNy4yLjD6CnJlZGlz
 // write integration test
 func (conn MyConn) Ping() (err error) {
 
-	//let thing o better solution
+	//let thing fo better solution
 	connectionFromMaster := strings.Contains(conn.RemoteAddr().String(), "6379")
 	if !connectionFromMaster {
 		_, err = conn.Write([]byte(BuildSimpleString("PONG")))
@@ -47,10 +48,8 @@ func (conn MyConn)  Set(args []string) (err error) {
 		if err != nil {
 			return errors.New("Invalid time")
 		}
-		fmt.Print("set 2111")
 		opResult = handleSet(key, value, &timeMs)
 	default:
-		fmt.Print("set 32")
 		opResult = handleSet(key, value, nil)
 	}
 
@@ -70,18 +69,11 @@ func (conn MyConn)  Get(args [] string) (err error) {
 	var value, result string
 	value = handleGet(key)
 
-	fmt.Println("what is the value?")
-	fmt.Println(value)
 	if(value != "") {
-		fmt.Println("not empty value")
 		result = BuildBulkString(value)
 	} else {
-		fmt.Println("empty value")
 		result = BuildNullBulkString()
 	}
-
-	fmt.Println("what are we sending?")
-	fmt.Println(result)
 
 	_, err = conn.Write([]byte(result))
 	return err
@@ -112,16 +104,12 @@ func (conn MyConn)  replConfConfirm() (err error) {
 }
 
 func (conn MyConn)  replConfGetAct() (err error) {
-	fmt.Println("This should be first")
 	result :=  BuildRESPArray([]string{"REPLCONF", "ACK",  strconv.Itoa(byteParsed)})
 	_, err = conn.Write([]byte(result))
 	return err
 }
 
 func (conn MyConn)  replConfAct(args []string) (err error) {
-	fmt.Println("This should be first")
-	fmt.Println("args")
-	fmt.Println(args)
 	bytes := args[2]
 	for _, rc := range replConn {
 		if rc.RemoteAddr().String() == conn.RemoteAddr().String() {
@@ -132,8 +120,6 @@ func (conn MyConn)  replConfAct(args []string) (err error) {
 			rc.byteAck = conv
 		}
 	}
-	// result :=  BuildRESPArray([]string{"REPLCONF", "ACK",  strconv.Itoa(byteParsed)})
-	// _, err = conn.Write([]byte(result))
 	return nil
 }
 
@@ -174,6 +160,23 @@ func (conn MyConn) Psync(serverCon Server) (err error) {
 	if err !=nil {
 		fmt.Print("problem with file")
 	}
+	return err
+}
+
+
+func (conn MyConn) Type(args []string) (err error) {
+
+	key := args[1]
+	var value, result string
+	value = handleGet(key)
+
+	if(value != "") {
+		result = BuildSimpleString(reflect.TypeOf(value).String())
+	} else {
+		result = BuildSimpleString("none")
+	}
+
+	_, err = conn.Write([]byte(result))
 	return err
 }
 
@@ -230,6 +233,4 @@ func (conn MyConn) Wait(args []string) (err error) {
 			
 		}
 	}
-		
-	return err
 }
