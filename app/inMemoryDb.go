@@ -25,12 +25,14 @@ func handleSet(key, value string, expiryTime *int) bool {
 		m[key] = CustomSetStore{
 			Value:    value,
 			ExpireAt: time.Now().Add(time.Duration(*expiryTime) * time.Millisecond),
+			Type: "string",
 		}
 	} else {
 		fmt.Print("save")
 		m[key] = CustomSetStore{
 			Value:    value,
 			ExpireAt: time.Time{},
+			Type: "string",
 		}
 	}
 
@@ -38,14 +40,14 @@ func handleSet(key, value string, expiryTime *int) bool {
 }
 
 
-func handleGet(key string) string {
+func handleGet(key string) CustomSetStore {
 	defer lock.RUnlock()
 	lock.RLock()
 	r, ok := m[key]
 	if !ok ||(time.Now().After(r.ExpireAt) && r.ExpireAt != time.Time{})  {
-		return ""
+		return CustomSetStore{}
 	}
 
 
-	return r.Value
+	return r
 }

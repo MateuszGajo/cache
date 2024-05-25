@@ -17,6 +17,7 @@ import (
 type CustomSetStore struct {
 	Value      string
 	ExpireAt  time.Time
+	Type string
 }
 
 type Replica struct {

@@ -20,6 +20,7 @@ const (
 	RDBFILE Commands = "RDB-FILE"
 	WAIT Commands = "WAIT"
 	TYPE Commands = "TYPE"
+	XADD Commands = "XADD"
 )
 
 type ReplicaConn struct {
@@ -115,6 +116,8 @@ func executeCommand(commandDetails  CommandDetails, bytes string, conn MyConn, s
 		err = conn.ReplConf(args)
 	case TYPE:
 		err = conn.Type(args)
+	case XADD:
+		err = conn.Xadd(args)
 	case PSYNC: 
 		err = conn.Psync(serverCon)
 		replConn[conn.ID] = &ReplicaConn{

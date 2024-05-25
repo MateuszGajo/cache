@@ -4,7 +4,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"reflect"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -66,11 +66,11 @@ func (conn MyConn)  Set(args []string) (err error) {
 
 func (conn MyConn)  Get(args [] string) (err error) {
 	key := args[1]
-	var value, result string
-	value = handleGet(key)
+	var result string
+	value := handleGet(key)
 
-	if(value != "") {
-		result = BuildBulkString(value)
+	if(value != CustomSetStore{}) {
+		result = BuildBulkString(value.Value)
 	} else {
 		result = BuildNullBulkString()
 	}
@@ -167,17 +167,44 @@ func (conn MyConn) Psync(serverCon Server) (err error) {
 func (conn MyConn) Type(args []string) (err error) {
 
 	key := args[1]
-	var value, result string
-	value = handleGet(key)
+	var result string
+	value := handleGet(key)
 
-	if(value != "") {
-		result = BuildSimpleString(reflect.TypeOf(value).String())
+	if((value != CustomSetStore{})) {
+		result = BuildSimpleString(value.Type)
 	} else {
 		result = BuildSimpleString("none")
 	}
 
 	_, err = conn.Write([]byte(result))
 	return err
+}
+
+func (conn MyConn) Xadd(args []string) (err error) {
+ // Separate serialization
+ //Better erro handling
+	streamKey := args[1]
+	entryKey := args[2]
+
+	content := []string{fmt.Sprintf("id:%v",entryKey)}
+	if(len(args) %2 == 0) {
+		fmt.Print("wrong number of arguments")
+		os.Exit(1);
+	}
+	for i:= 3; i< len(args) -1 ; i++ {
+		content = append(content, fmt.Sprintf("%v,%v", args[i], args[i+1]))
+	}
+	serializedString := strings.Join(content, ",")
+
+	ok := handleSet(streamKey, serializedString, nil)
+
+	if !ok {
+		fmt.Print("Problem setting value")
+	}
+
+	conn.Write([]byte(BuildBulkString(entryKey)))
+
+	return err;
 }
 
 func (conn MyConn) Wait(args []string) (err error) {
