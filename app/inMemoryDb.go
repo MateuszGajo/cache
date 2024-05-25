@@ -16,7 +16,7 @@ func handleRemove(key string) {
 	//TO DO
 }
 
-func handleSet(key, value string, expiryTime *int) bool {
+func handleSet(key, value string, expiryTime *int, recordType string) bool {
 	lock.Lock()
 	defer lock.Unlock()
 	if expiryTime != nil {
@@ -25,14 +25,14 @@ func handleSet(key, value string, expiryTime *int) bool {
 		m[key] = CustomSetStore{
 			Value:    value,
 			ExpireAt: time.Now().Add(time.Duration(*expiryTime) * time.Millisecond),
-			Type: "string",
+			Type: recordType,
 		}
 	} else {
 		fmt.Print("save")
 		m[key] = CustomSetStore{
 			Value:    value,
 			ExpireAt: time.Time{},
-			Type: "string",
+			Type: recordType,
 		}
 	}
 

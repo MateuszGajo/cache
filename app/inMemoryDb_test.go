@@ -8,7 +8,7 @@ import (
 func TestReadSetValue(t *testing.T) {
 	key := "abc"
 	value := "123"
-	res := handleSet(key, value, nil)
+	res := handleSet(key, value, nil, "string")
 
 	if !res {
 		t.Fatalf("problem setting %v with %v value", key, value)
@@ -35,7 +35,7 @@ func TestExpiredValueShouldReturnEmpty(t *testing.T) {
 	key := "abc"
 	value := "123"
 	expiry := 100
-	res := handleSet(key, value, &expiry)
+	res := handleSet(key, value, &expiry, "string")
 
 	if !res {
 		t.Fatalf("problem setting %v with %v value", key, value)

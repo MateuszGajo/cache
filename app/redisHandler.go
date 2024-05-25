@@ -48,9 +48,9 @@ func (conn MyConn)  Set(args []string) (err error) {
 		if err != nil {
 			return errors.New("Invalid time")
 		}
-		opResult = handleSet(key, value, &timeMs)
+		opResult = handleSet(key, value, &timeMs, "string")
 	default:
-		opResult = handleSet(key, value, nil)
+		opResult = handleSet(key, value, nil, "string")
 	}
 
 	connectionFromMaster := strings.Contains(conn.RemoteAddr().String(), "6379")
@@ -196,7 +196,7 @@ func (conn MyConn) Xadd(args []string) (err error) {
 	}
 	serializedString := strings.Join(content, ",")
 
-	ok := handleSet(streamKey, serializedString, nil)
+	ok := handleSet(streamKey, serializedString, nil, "stream")
 
 	if !ok {
 		fmt.Print("Problem setting value")
