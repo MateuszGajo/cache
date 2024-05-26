@@ -128,6 +128,10 @@ func handShake(){
 }
 
 func main() {
+	fmt.Println("Hello")
+	fmt.Println("Hello")
+	fmt.Println("Hello")
+	fmt.Println("Hello")
 	serverCon := Server{
 		role: "master",
 	}

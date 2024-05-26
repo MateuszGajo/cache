@@ -17,8 +17,8 @@ func TestReadSetValue(t *testing.T) {
 	readVal := handleGet(key)
 
 
-	if (readVal != CustomSetStore{}) {
-		t.Fatalf("values are diffrent, set: %v, get:%v", value, readVal)
+	if (readVal.Value != "123") {
+		t.Fatalf("values are diffrent, set: %v, get:%v", value, readVal.Value)
 	}
 }
 
@@ -26,7 +26,7 @@ func TestReadNotExistValue(t *testing.T) {
 	key := "notExist"
 	readVal := handleGet(key)
 
-	if (readVal != CustomSetStore{}) {
+	if (readVal.Value != "") {
 		t.Fatalf("Value should be empty, isnted recived: %v", readVal)
 	}
 }
@@ -46,7 +46,7 @@ func TestExpiredValueShouldReturnEmpty(t *testing.T) {
 	readVal := handleGet(key)
 
 
-	if (readVal != CustomSetStore{}) {
-		t.Fatalf("Value should be empty, isnted recived: %v", readVal)
+	if (readVal.Value != "") {
+		t.Fatalf("Value should be empty, isnted recived: %v", readVal.Value)
 	}
 }

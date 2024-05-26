@@ -6,18 +6,6 @@ import (
 	"testing"
 )
 
-func TestSingleCommand1(t *testing.T) {
-	tmpString := fmt.Sprintf("+ping/r/n")
-
-	resp, _,_ := splitMultipleCommandString(tmpString)
-
-	fmt.Print(resp)
-
-	if !reflect.DeepEqual(resp[0].command, []string{"set", "abc", "def"} ){
-		t.Fatalf("expected %v, got: %v",  []string{"set", "abc", "def"}, resp[0].command)
-	}
-
-}
 
 func TestSingleCommand(t *testing.T) {
 	tmpString := fmt.Sprintf("*3%v$3%vset%v$3%vabc%v$3%vdef%v", CLRF,CLRF,CLRF,CLRF,CLRF,CLRF, CLRF)
@@ -104,31 +92,3 @@ func TestWithCommandAfterRdbFile2(t *testing.T) {
 }
 
 
-
-
-
-// func TestBreakComamnd(t *testing.T) {
-// 	tmpString := fmt.Sprintf("+FULLRESYNC 75cd7bc10c49047e0d163660f3b90625b1af31dc 0%v$88%vREDIS0011\xfa\tredis-ver\x057.2.0\xfa\nredis-bits\xc0@\xfa\x05ctime\xc2m\b\xbce\xfa\bused-mem°\xc4\x10\x00\xfa\baof-base\xc0\x00\xff\xf0n;\xfe\xc0\xffZ\xa2*3\r\n$3\r\nset\r\n$3\r\nfoo", CLRF, CLRF)
-	
-
-// 	resp, rest, _ := splitMultipleCommandString(tmpString)
-
-// 	fmt.Print(resp)
-
-// 	if !reflect.DeepEqual(resp[0].command, []string{"FULLRESYNC", "75cd7bc10c49047e0d163660f3b90625b1af31dc", "0"} ){
-// 		t.Fatalf("expected %v, got: %v",  []string{"FULLRESYNC", "75cd7bc10c49047e0d163660f3b90625b1af31dc", "0"}, resp[0].command)
-// 	}
-
-// 	if !reflect.DeepEqual(resp[1].command, []string{"rdb-file", "REDIS0011\xfa\tredis-ver\x057.2.0\xfa\nredis-bits\xc0@\xfa\x05ctime\xc2m\b\xbce\xfa\bused-mem°\xc4\x10\x00\xfa\baof-base\xc0\x00\xff\xf0n;\xfe\xc0\xffZ\xa2"} ){
-// 		t.Fatalf("expected %q, got: %q",  []string{"rdb-file", "REDIS0011\xfa\tredis-ver\x057.2.0\xfa\nredis-bits\xc0@\xfa\x05ctime\xc2m\b\xbce\xfa\bused-mem°\xc4\x10\x00\xfa\baof-base\xc0\x00\xff\xf0n;\xfe\xc0\xffZ\xa2"}, resp[1].command)
-// 	}
-
-// 	if(len(resp) >2) {
-// 		t.Fatalf("should return only two command, returned: %q", resp)
-// 	}
-
-// 	if !(rest == "*3\r\n$3\r\nset\r\n$3\r\nfoo"){
-// 		t.Fatalf("expected %q, got: %q",  "*3\r\n$3\r\nset\r\n$3\r\nfoo" , rest)
-// 	}
-
-// }

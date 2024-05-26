@@ -20,3 +20,11 @@ func TestSimpleString(t *testing.T) {
 		t.Fatalf("Expected:%v, got:%v", fmt.Sprintf("*3%v$8%vREPLCONF%v$3%vACK%v$1%v0%v", CLRF,CLRF,CLRF,CLRF,CLRF ,CLRF,CLRF), resp)
 	}
 }
+
+func TestSimpleError(t *testing.T) {
+	resp := BuildSimpleError("Error", "This is error")
+
+	if resp != "-Error This is error" {
+		t.Fatalf("Expected:%v, got:%v", "-Error This is error", resp)
+	}
+}
