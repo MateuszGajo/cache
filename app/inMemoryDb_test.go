@@ -14,20 +14,20 @@ func TestReadSetValue(t *testing.T) {
 		t.Fatalf("problem setting %v with %v value", key, value)
 	}
 
-	readVal := handleGet(key)
+	readVal, _ := HandleGetString(key, &Server{})
 
 
-	if (readVal.Value != "123") {
-		t.Fatalf("values are diffrent, set: %v, get:%v", value, readVal.Value)
+	if (readVal != "123") {
+		t.Fatalf("values are diffrent, set: %v, get:%v", value, readVal)
 	}
 }
 
 func TestReadNotExistValue(t *testing.T) {
 	key := "notExist"
-	readVal := handleGet(key)
+	readVal, err := HandleGetString(key,&Server{})
 
-	if (readVal.Value != "") {
-		t.Fatalf("Value should be empty, isnted recived: %v", readVal)
+	if err == nil {
+		t.Fatalf("Value should be empty, isnted recived: %v, err:%v", readVal, err)
 	}
 }
 
@@ -43,10 +43,28 @@ func TestExpiredValueShouldReturnEmpty(t *testing.T) {
 
 	time.Sleep(time.Millisecond * time.Duration(expiry) )
 
-	readVal := handleGet(key)
+	readVal, err := HandleGetString(key,&Server{})
 
-
-	if (readVal.Value != "") {
-		t.Fatalf("Value should be empty, isnted recived: %v", readVal.Value)
+	if err == nil {
+		t.Fatalf("Value should be empty, isnted recived: %v, err:%v", readVal, err)
 	}
+}
+
+
+func TestExpiredValueShouldReturnEmpty1(t *testing.T) {
+	handleSet("abc", "123", nil, "string")
+	handleSet("def", Stream{}, nil, "stream")
+
+	entryType := HandleGetType("abc")
+
+	if entryType != "string" {
+		t.Fatalf("for key abc and value 123 type should be string, but recived: %v", entryType)
+	}
+
+	entryType = HandleGetType("def")
+
+	if entryType != "stream" {
+		t.Fatalf("for key abc and value 123 type should be string, but recived: %v", entryType)
+	}
+
 }

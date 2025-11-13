@@ -1,35 +1,15 @@
 package main
 
 import (
-	"flag"
 	"fmt"
+	"log"
 	"math/rand/v2"
 	"net"
 	"os"
 	"strconv"
-	"strings"
-	"time"
+	"sync"
 )
 
-
-
-
-type CustomSetStore struct {
-	Value      string
-	ExpireAt  time.Time
-	Type string
-}
-
-type Replica struct {
-	Port string
-	Address string
-}
-
-type Server struct {
-	role string
-	replicaId string
-	replicaOffSet int
-}
 
 type MyConn struct {
 	ID string
@@ -37,139 +17,145 @@ type MyConn struct {
 	ignoreWrites bool
 }
 
-var port int
-var replica Replica
-var CLRF string
+var CLRF string = "\r\n"
 
-func init(){
-	flag.IntVar(&port, "port", 6379, "port to listen to")
-	replicaof := flag.String("replicaof", "", "Replica of master address")
 
-	flag.Parse()
-	if *replicaof != "" {
-		parts := strings.Split(*replicaof, " ")
-		if len(parts) == 2 {
-			replica.Address = parts[0]
-			replica.Port = parts[1]
-		}
-	}
+type Server struct {
+	listener net.Listener
+	quit chan interface {}
+	wg sync.WaitGroup
 
-	// os := runtime.GOOS
+	role string
+	port string
+	masterConfig MasterServerConfig
+	replicaConfig ReplicaServerConfig
+	dbConfig DatabaseConfig
+}
 
-    // if os == "windows" {
-    //     CLRF = "\\r\\n" // fix this
-    // } else {
-        CLRF = "\r\n"
-    // }
+type DatabaseConfig struct {
+	dirName string
+	fileName string
 }
 
 
-func handShake(){
-	conn, err := net.Dial("tcp", replica.Address + ":" + replica.Port)
-
-	if err != nil {
-		fmt.Printf("cannot connect to %v:%v", replica.Address, replica.Port)
-	}
-
-	_, err = conn.Write([]byte(BuildRESPArray([]string{"ping"})))
-
-	if err != nil {
-		fmt.Print("error while pinging master replica", err)
-		conn.Close()
-		return
-	}
-
-	inputComm, err := readInput(conn)
-	if err != nil {
-		fmt.Print("error while pinging master replica", err)
-		conn.Close()
-		return
-	}
-
-	args := inputComm.commandStr[0].command
-	if args[0] != "PONG" {
-		fmt.Print("Response its invalid")
-		os.Exit(1)
-	}
-
-	conn.Write([]byte(BuildRESPArray([]string{"REPLCONF","listening-port",strconv.Itoa((port))})))
-
-	inputComm, err = readInput(conn)
-	if err != nil {
-		fmt.Print("error while replConf listening-port master replica")
-		conn.Close()
-		return
-	}
-
-	args = inputComm.commandStr[0].command
-	if args[0] != "OK" {
-		fmt.Printf("Response its invalid, expected ok we got:%v", args[0])
-		os.Exit(1)
-	}
-
-	conn.Write([]byte(BuildRESPArray([]string {"REPLCONF","capa","psync2"})))
-
-	inputComm,err = readInput(conn)
-	if err != nil {
-		fmt.Print("error while replConf capa  master replica")
-		conn.Close()
-		return
-	}
-
-	args = inputComm.commandStr[0].command
-	if args[0] != "OK" {
-		fmt.Printf("Response its invalid, expected ok we got:%v", args[0])
-		os.Exit(1)
-	}
-
-	conn.Write([]byte(BuildRESPArray([]string{"PSYNC","?","-1"})))
-
-	go handleConenction(MyConn{Conn: conn, ignoreWrites: false, ID: strconv.Itoa(rand.IntN(100))}, Server{}) 
+type ReplicaServerConfig struct {
+	masterPort string
+	masterAddress string
+	byteProcessed int
 }
 
-func main() {
-	fmt.Println("Hello")
-	fmt.Println("Hello")
-	fmt.Println("Hello")
-	fmt.Println("Hello")
-	serverCon := Server{
-		role: "master",
+type MasterServerConfig struct {
+	replicaId string
+	replicaOffSet int
+	replicaConnections map[string]*ReplicaConn
+}
+
+type ReplicaConn struct {
+	net.Conn
+	bytesWrite int
+	byteAck int
+}
+
+
+type ServerOptions func(*Server)
+
+func WithPort(port string) ServerOptions {
+	return func(s *Server){
+		s.port = port
 	}
-	
+}
 
-	ln, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
+func WithDb(dirName string, fileName string) ServerOptions {
+	return func(s *Server){
+		s.dbConfig.dirName = dirName
+		s.dbConfig.fileName = fileName
+	}
+}
 
+
+func WithRole(role string) ServerOptions {
+	return func(s *Server){
+		s.role = role
+	}
+}
+
+func WithMasterReplicaConfig(replicaId string) ServerOptions {
+	return func(s *Server){
+		s.masterConfig.replicaId = replicaId
+		s.masterConfig.replicaOffSet= 0
+	}
+}
+
+func WithReplicaMasterServer(masterAddress string, masterPort string, ) ServerOptions {
+	return func(s *Server){
+		s.replicaConfig.masterAddress = masterAddress
+		s.replicaConfig.masterPort = masterPort
+	}
+}
+
+func NewServer(options ...ServerOptions) *Server{
+	server := &Server {
+		quit: make(chan interface{}),
+		masterConfig: MasterServerConfig{
+			replicaConnections: make(map[string]*ReplicaConn),
+		},
+		replicaConfig: ReplicaServerConfig{},
+		dbConfig: DatabaseConfig{},
+	}
+
+	for _,option := range options {
+		option(server)
+	}
+
+
+	if(server.role == "slave") {
+		handShake(server)
+	} 
+
+	listen, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%v", server.port))
 	if err != nil {
-		fmt.Printf("Failed to run on port %d", port)
+		fmt.Printf("Failed to run on port %v", server.port)
 		os.Exit(1)
 	}
 
-	defer func(){
-		fmt.Print("close")
-		ln.Close()
-	}()
+	server.listener = listen
+	server.wg.Add(1)
 
-	if(replica != Replica{}) {
-		serverCon.role = "slave"
-		handShake()
-	} else {
-		serverCon.replicaOffSet = 0
-		serverCon.replicaId = "8371b4fb1155b71f4a04d3e1bc3e18c4a990aeeb"
-	}
+	go server.serve()
+	return server;
+}
 
+func (server *Server) Close() {
+	close(server.quit)
+	server.listener.Close()
+	server.wg.Wait()
+}
 
+func (server *Server) serve() {
+	defer server.wg.Done()
 	for {
-		conn, err := ln.Accept()
+		conn, err := server.listener.Accept()
+
 		if err != nil {
-			fmt.Println("Error accepting connection", err.Error())
-			os.Exit(1)
+			select {
+			case <- server.quit:
+				return;
+			default:
+				log.Println("accept error", err)
+			}
+		}else {
+			server.wg.Add(1)
+			go func() {
+				id := ""
+				for (id!= "" && server.masterConfig.replicaConnections[id] != nil){
+					id  =strconv.Itoa(rand.IntN(100))
+				}
+				handleConenction(MyConn{Conn: conn, ignoreWrites: false, ID: strconv.Itoa(rand.IntN(100)) }, server)
+				server.wg.Done()
+			}()
 		}
-
-		go handleConenction(MyConn{Conn: conn, ignoreWrites: false, ID: strconv.Itoa(rand.IntN(100)) }, serverCon)
 	}
-	
 }
-
 
 
 

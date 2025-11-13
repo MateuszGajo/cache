@@ -58,7 +58,7 @@ func BuildRespInt(val int) string {
 }
 
 func BuildSimpleError(errType string, message string) string {
-	return fmt.Sprintf("-%v %v", errType, message)
+	return fmt.Sprintf("-%v %v%v", errType, message,CLRF)
 }
 
 func BuildRESPArray(args []string) string {

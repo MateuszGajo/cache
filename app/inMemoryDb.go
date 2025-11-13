@@ -1,10 +1,18 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 	"time"
 )
+
+type CustomSetStore struct {
+	Value      interface{}
+	ExpireAt  time.Time
+	Type string
+}
+
 
 var m = map[string]CustomSetStore{}
 var lock = sync.RWMutex{}
@@ -16,7 +24,7 @@ func handleRemove(key string) {
 	//TO DO
 }
 
-func handleSet(key, value string, expiryTime *int, recordType string) bool {
+func handleSet(key string, value interface {}, expiryTime *int, recordType string) bool {
 	lock.Lock()
 	defer lock.Unlock()
 	if expiryTime != nil {
@@ -40,14 +48,76 @@ func handleSet(key, value string, expiryTime *int, recordType string) bool {
 }
 
 
-func handleGet(key string) CustomSetStore {
+func handleGet(key string) (CustomSetStore, error) {
 	defer lock.RUnlock()
 	lock.RLock()
 	r, ok := m[key]
 	if !ok ||(time.Now().After(r.ExpireAt) && r.ExpireAt != time.Time{})  {
-		return CustomSetStore{}
+		return CustomSetStore{}, errors.New("There is no value")
 	}
 
 
-	return r
+	return r, nil
+}
+
+func HandleGetString(key string, server *Server) (string, error) {
+	res, err := handleGet(key)
+
+	fmt.Println("halo halo get get")
+	fmt.Println(res)
+
+	if(res == CustomSetStore{}) {
+		
+		resp := readFile(server.dbConfig.dirName + "/" + server.dbConfig.fileName)
+		fmt.Println("hello")
+		fmt.Println(resp)
+		res := ""
+		for _,v := range resp {
+			if(v.key == key && (v.exp.UnixMilli() ==0 ||v.exp.After(time.Now()))) {
+				res = v.value
+			}
+		}
+		if(res != "") {
+			return res, nil
+		}
+
+		return "", err
+	
+	}
+
+	stringValue, ok := res.Value.(string)
+
+	if(!ok){
+		panic("Value isn't type of string")
+	}
+
+	return stringValue, err
+}
+
+func HandleGetStream(key string) Stream {
+	res, err := handleGet(key)
+
+	if(err != nil || res == CustomSetStore{}) {
+		return Stream{}
+	}
+
+
+	stringValue, ok := res.Value.(Stream)
+
+	if(!ok){
+		panic("Value isn't type of Stream")
+	}
+
+
+	return stringValue
+}
+
+func HandleGetType(key string) string {
+	res, err := handleGet(key)
+
+	if (err!=nil || res == CustomSetStore{}) {
+		return "none"
+	}
+
+	return res.Type
 }

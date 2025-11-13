@@ -2,7 +2,10 @@ package main
 
 import (
 	"fmt"
+	"math/rand/v2"
 	"net"
+	"os"
+	"strconv"
 	"strings"
 )
 
@@ -21,37 +24,19 @@ const (
 	WAIT Commands = "WAIT"
 	TYPE Commands = "TYPE"
 	XADD Commands = "XADD"
+	XRANGE Commands = "XRANGE"
+	XREAD Commands = "XREAD"
+	CONFIG Commands = "CONFIG"
+	KEYS Commands = "KEYS"
 )
 
-type ReplicaConn struct {
-	net.Conn
-	bytesWrite int
-	byteAck int
-}
 
-
-var whiteReplCommands = map[Commands]bool{SET: true}
-var handshakeSyncCommands = map[Commands]bool{RDBFILE: true, FULLRESYNC: true}
-var replConn map[string]*ReplicaConn = make(map[string]*ReplicaConn)
-var byteParsed int = 0
-
-func propagte (command CommandDetails) {
-	fmt.Println("propagte")
-	if replConn == nil {
-		return
-	}
-
-
-	for _,v := range replConn {
+func propagte (command CommandDetails, server *Server) {
+	for _,v := range server.masterConfig.replicaConnections {
 		v.bytesWrite += command.length
-		fmt.Println("co tutaj")
-		fmt.Println(v.bytesWrite)
 	}
-	for _,v := range replConn {
-		fmt.Println("co tutaj")
-		fmt.Println(v.bytesWrite)
-	}
-	for _, v := range replConn {
+
+	for _, v := range server.masterConfig.replicaConnections {
 		_, err := v.Write([]byte(command.raw))
 
 		if err != nil {
@@ -60,18 +45,15 @@ func propagte (command CommandDetails) {
 	}
 }
 
-func handleConenction(conn MyConn, serverCon Server) {
+func handleConenction(conn MyConn, server *Server) {
 	defer func(conn MyConn) {
 		fmt.Print("lets close it")
-		delete(replConn, conn.ID)
+		delete(server.masterConfig.replicaConnections, conn.ID)
 		conn.Close()
 	}(conn)
 
 	for {
 		comamndInput, err := readInput(conn)
-
-		fmt.Println("read")
-		fmt.Printf("%q",comamndInput)
 
 		if err != nil {
 			fmt.Println("Error while reaidng", err)
@@ -79,7 +61,7 @@ func handleConenction(conn MyConn, serverCon Server) {
 		}
 
 		for _, v := range comamndInput.commandStr {
-			err = executeCommand(v, comamndInput.commandByte, conn, serverCon)
+			err = executeCommand(v, comamndInput.commandByte, conn, server)
 
 			if err != nil {
 				fmt.Println("Error while reaidng", err)
@@ -90,7 +72,7 @@ func handleConenction(conn MyConn, serverCon Server) {
 	}
 }
 
-func executeCommand(commandDetails  CommandDetails, bytes string, conn MyConn, serverCon Server) (err error){
+func executeCommand(commandDetails  CommandDetails, bytes string, conn MyConn, server *Server) (err error){
 	args := commandDetails.command
 
 		if len(args) == 0 {
@@ -109,18 +91,26 @@ func executeCommand(commandDetails  CommandDetails, bytes string, conn MyConn, s
 	case SET:	
 		err = conn.Set(args)
 	case GET:
-		err = conn.Get(args)
+		err = conn.Get(args, server)
 	case INFO:
-		err = conn.Info(args, serverCon)
+		err = conn.Info(args, server)
 	case REPLCONF:
-		err = conn.ReplConf(args)
+		err = conn.ReplConf(args, server)
 	case TYPE:
 		err = conn.Type(args)
 	case XADD:
 		err = conn.Xadd(args)
+	case XRANGE:
+		err = conn.Xrange(args)
+	case XREAD:
+		err = conn.Xread(args)
+	case KEYS:
+		err = conn.Keys(args, server)
+	case CONFIG:
+		err = conn.Config(args, server)
 	case PSYNC: 
-		err = conn.Psync(serverCon)
-		replConn[conn.ID] = &ReplicaConn{
+		err = conn.Psync(server)
+		server.masterConfig.replicaConnections[conn.ID] = &ReplicaConn{
 			Conn: conn,
 			bytesWrite: 0,
 			byteAck: 0,
@@ -130,18 +120,22 @@ func executeCommand(commandDetails  CommandDetails, bytes string, conn MyConn, s
 	case RDBFILE:
 		// empty for now
 	case WAIT:
-		err = conn.Wait(args)
+		err = conn.Wait(args, server)
 	default: {
 		err = fmt.Errorf("invalid command received:%v", command)
 		fmt.Println("invalid command received:", command)
 		conn.Write([]byte("-ERR unknown command\r\n"))
 	}
 	}
-	if whiteReplCommands[command] && replConn != nil {
-		propagte(commandDetails)
+	whiteReplCommands := map[Commands]bool{SET: true}
+	handshakeSyncCommands := map[Commands]bool{RDBFILE: true, FULLRESYNC: true}
+
+	if whiteReplCommands[command] && len(server.masterConfig.replicaConnections) > 0 {
+		propagte(commandDetails, server)
 	}
+
 	if(!handshakeSyncCommands[command]) {
-		byteParsed += commandDetails.length
+		server.replicaConfig.byteProcessed += commandDetails.length
 	}
 
 	
@@ -151,4 +145,68 @@ func executeCommand(commandDetails  CommandDetails, bytes string, conn MyConn, s
 	}
 
 	return err
+}
+
+func handShake(server *Server){
+	fmt.Println("hello")
+	conn, err := net.Dial("tcp", server.replicaConfig.masterAddress + ":" + server.replicaConfig.masterPort)
+
+	if err != nil {
+		fmt.Printf("cannot connect to %v:%v", server.replicaConfig.masterAddress, server.replicaConfig.masterPort)
+	}
+
+	_, err = conn.Write([]byte(BuildRESPArray([]string{"ping"})))
+
+	if err != nil {
+		fmt.Print("error while pinging master replica", err)
+		conn.Close()
+		return
+	}
+
+	inputComm, err := readInput(conn)
+	if err != nil {
+		fmt.Print("error while pinging master replica", err)
+		conn.Close()
+		return
+	}
+
+	args := inputComm.commandStr[0].command
+	if args[0] != "PONG" {
+		fmt.Print("Response its invalid")
+		os.Exit(1)
+	}
+
+	conn.Write([]byte(BuildRESPArray([]string{"REPLCONF","listening-port",server.port})))
+
+	inputComm, err = readInput(conn)
+	if err != nil {
+		fmt.Print("error while replConf listening-port master replica")
+		conn.Close()
+		return
+	}
+
+	args = inputComm.commandStr[0].command
+	if args[0] != "OK" {
+		fmt.Printf("Response its invalid, expected ok we got:%v", args[0])
+		os.Exit(1)
+	}
+
+	conn.Write([]byte(BuildRESPArray([]string {"REPLCONF","capa","psync2"})))
+
+	inputComm,err = readInput(conn)
+	if err != nil {
+		fmt.Print("error while replConf capa  master replica")
+		conn.Close()
+		return
+	}
+
+	args = inputComm.commandStr[0].command
+	if args[0] != "OK" {
+		fmt.Printf("Response its invalid, expected ok we got:%v", args[0])
+		os.Exit(1)
+	}
+
+	conn.Write([]byte(BuildRESPArray([]string{"PSYNC","?","-1"})))
+
+	go handleConenction(MyConn{Conn: conn, ignoreWrites: false, ID: strconv.Itoa(rand.IntN(100))}, &Server{}) 
 }
