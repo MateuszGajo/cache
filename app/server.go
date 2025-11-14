@@ -10,7 +10,6 @@ import (
 	"sync"
 )
 
-
 type MyConn struct {
 	ID string
 	net.Conn
@@ -19,98 +18,93 @@ type MyConn struct {
 
 var CLRF string = "\r\n"
 
-
 type Server struct {
 	listener net.Listener
-	quit chan interface {}
-	wg sync.WaitGroup
+	quit     chan interface{}
+	wg       sync.WaitGroup
 
-	role string
-	port string
-	masterConfig MasterServerConfig
+	role          string
+	port          string
+	masterConfig  MasterServerConfig
 	replicaConfig ReplicaServerConfig
-	dbConfig DatabaseConfig
+	dbConfig      DatabaseConfig
 }
 
 type DatabaseConfig struct {
-	dirName string
+	dirName  string
 	fileName string
 }
 
-
 type ReplicaServerConfig struct {
-	masterPort string
+	masterPort    string
 	masterAddress string
 	byteProcessed int
 }
 
 type MasterServerConfig struct {
-	replicaId string
-	replicaOffSet int
+	replicaId          string
+	replicaOffSet      int
 	replicaConnections map[string]*ReplicaConn
 }
 
 type ReplicaConn struct {
 	net.Conn
 	bytesWrite int
-	byteAck int
+	byteAck    int
 }
-
 
 type ServerOptions func(*Server)
 
 func WithPort(port string) ServerOptions {
-	return func(s *Server){
+	return func(s *Server) {
 		s.port = port
 	}
 }
 
 func WithDb(dirName string, fileName string) ServerOptions {
-	return func(s *Server){
+	return func(s *Server) {
 		s.dbConfig.dirName = dirName
 		s.dbConfig.fileName = fileName
 	}
 }
 
-
 func WithRole(role string) ServerOptions {
-	return func(s *Server){
+	return func(s *Server) {
 		s.role = role
 	}
 }
 
 func WithMasterReplicaConfig(replicaId string) ServerOptions {
-	return func(s *Server){
+	return func(s *Server) {
 		s.masterConfig.replicaId = replicaId
-		s.masterConfig.replicaOffSet= 0
+		s.masterConfig.replicaOffSet = 0
 	}
 }
 
-func WithReplicaMasterServer(masterAddress string, masterPort string, ) ServerOptions {
-	return func(s *Server){
+func WithReplicaMasterServer(masterAddress string, masterPort string) ServerOptions {
+	return func(s *Server) {
 		s.replicaConfig.masterAddress = masterAddress
 		s.replicaConfig.masterPort = masterPort
 	}
 }
 
-func NewServer(options ...ServerOptions) *Server{
-	server := &Server {
+func NewServer(options ...ServerOptions) *Server {
+	server := &Server{
 		quit: make(chan interface{}),
 		masterConfig: MasterServerConfig{
 			replicaConnections: make(map[string]*ReplicaConn),
 		},
 		replicaConfig: ReplicaServerConfig{},
-		dbConfig: DatabaseConfig{},
+		dbConfig:      DatabaseConfig{},
 	}
 
-	for _,option := range options {
+	for _, option := range options {
 		option(server)
 	}
 
-
-	if(server.role == "slave") {
+	if server.role == "slave" {
 		handShake(server)
-	} 
+	}
 
 	listen, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%v", server.port))
 	if err != nil {
@@ -118,11 +112,13 @@ func NewServer(options ...ServerOptions) *Server{
 		os.Exit(1)
 	}
 
+	fmt.Println("server listening to ", "127.0.0.1:", server.port)
+
 	server.listener = listen
 	server.wg.Add(1)
 
 	go server.serve()
-	return server;
+	return server
 }
 
 func (server *Server) Close() {
@@ -138,34 +134,21 @@ func (server *Server) serve() {
 
 		if err != nil {
 			select {
-			case <- server.quit:
-				return;
+			case <-server.quit:
+				return
 			default:
 				log.Println("accept error", err)
 			}
-		}else {
+		} else {
 			server.wg.Add(1)
 			go func() {
 				id := ""
-				for (id!= "" && server.masterConfig.replicaConnections[id] != nil){
-					id  =strconv.Itoa(rand.IntN(100))
+				for id != "" && server.masterConfig.replicaConnections[id] != nil {
+					id = strconv.Itoa(rand.IntN(100))
 				}
-				handleConenction(MyConn{Conn: conn, ignoreWrites: false, ID: strconv.Itoa(rand.IntN(100)) }, server)
+				handleConenction(MyConn{Conn: conn, ignoreWrites: false, ID: strconv.Itoa(rand.IntN(100))}, server)
 				server.wg.Done()
 			}()
 		}
 	}
 }
-
-
-
-
-
-
-
-
-
-
-
-
-

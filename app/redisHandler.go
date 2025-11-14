@@ -12,11 +12,7 @@ import (
 
 var EMPTY_RDB_FILE_BASE64 string = "UkVESVMwMDEx+glyZWRpcy12ZXIFNy4yLjD6CnJlZGlzLWJpdHPAQPoFY3RpbWXCbQi8ZfoIdXNlZC1tZW3CsMQQAPoIYW9mLWJhc2XAAP/wbjv+wP9aog=="
 
-// find a way to not respond to master command
-// write integration test
 func (conn MyConn) Ping() (err error) {
-
-	//let thing fo better solution
 	connectionFromMaster := strings.Contains(conn.RemoteAddr().String(), "6379")
 	if !connectionFromMaster {
 		_, err = conn.Write([]byte(BuildSimpleString("PONG")))
@@ -40,10 +36,8 @@ func (conn MyConn) Set(args []string) (err error) {
 		param = args[3]
 		paramValue = args[4]
 	}
-	fmt.Print("value")
-	fmt.Print(value)
 
-	switch param {
+	switch strings.ToLower(param) {
 	case "px":
 		timeMs, err := strconv.Atoi(paramValue)
 		if err != nil {
@@ -87,6 +81,29 @@ func (conn MyConn) Info(args []string, serverCon *Server) (err error) {
 	return err
 }
 
+var linkedList = make(map[string]LinkedList)
+
+func (conn MyConn) RPush(args []string, serverCon *Server) (err error) {
+	fmt.Println("enter rpush??")
+	if len(args) < 2 {
+		return fmt.Errorf("Expected at least two arguments")
+	}
+
+	name := args[0]
+	list, ok := linkedList[name]
+
+	if !ok {
+		list = *NewLinkesList()
+		linkedList[name] = list
+	}
+	result := list.rpush(args[1])
+
+	response := BuildRespInt(result)
+	fmt.Println("hello write fking resp", response)
+	_, err = conn.Write([]byte(response))
+	return err
+}
+
 type ReplConfCommand string
 
 const (
@@ -127,10 +144,6 @@ func (conn MyConn) replConfAct(args []string, server *Server) (err error) {
 func (conn MyConn) ReplConf(args []string, server *Server) (err error) {
 	command := ReplConfCommand(strings.ToUpper(args[1]))
 
-	fmt.Println("args", args)
-	fmt.Println("command", command)
-	fmt.Println(command == LISTENING_PORT)
-
 	switch command {
 	case LISTENING_PORT, CAPA:
 		return conn.replConfConfirm()
@@ -163,7 +176,6 @@ func (conn MyConn) Psync(serverCon *Server) (err error) {
 	return err
 }
 
-// Fix for streams
 func (conn MyConn) Type(args []string) (err error) {
 	key := args[1]
 	result := BuildSimpleString(HandleGetType(key))
@@ -197,7 +209,6 @@ func VerifyStreamIntegrity(lastEntry string, newEntryId string) (bool, string) {
 		return true, "The ID specified in XADD must be greater than 0-0"
 	}
 
-	// lastEntry := GetLastStreamEntry(stream)
 	lastEntryKeyTime := "0"
 	lastEntrySequenceNumber := "0"
 
@@ -245,6 +256,7 @@ func getSequenceNumber(lastEntryId string, time string) string {
 }
 
 var streamListners map[string]chan StreamEntry = make(map[string]chan StreamEntry)
+var StreamType = "stream"
 
 func (conn MyConn) Xadd(args []string) (err error) {
 	streamKey := args[1]
@@ -271,7 +283,7 @@ func (conn MyConn) Xadd(args []string) (err error) {
 		}
 
 	}
-	// [*5 $4 xadd $5 apple $3 0-2 $11 temperature $2 79]
+
 	entryKeySplited = strings.Split(entryKey, "-")
 	streamEntry := StreamEntry{
 		Timestamp:      entryKeySplited[0],
@@ -283,18 +295,12 @@ func (conn MyConn) Xadd(args []string) (err error) {
 		Root:     Insert(stream.Root, entryKey, streamEntry),
 		LatestId: entryKey,
 	}
-	fmt.Println("what did we insert")
-	fmt.Println(newEntry)
-	fmt.Println(newEntry.Root.Entry)
-	fmt.Println("streamEntry")
-	fmt.Println(streamEntry)
-	fmt.Println("entryKey")
-	fmt.Println(entryKey)
+
 	for _, v := range streamListners {
 		v <- streamEntry
 	}
 
-	handleSet(streamKey, newEntry, nil, "stream")
+	handleSet(streamKey, newEntry, nil, StreamType)
 
 	conn.Write([]byte(BuildBulkString(entryKey)))
 
@@ -344,7 +350,7 @@ func (conn MyConn) Keys(args []string, server *Server) (err error) {
 	resp := readFile(server.dbConfig.dirName + "/" + server.dbConfig.fileName)
 	keys := []string{}
 
-	for _,v := range resp {
+	for _, v := range resp {
 		keys = append(keys, v.key)
 	}
 
@@ -352,8 +358,6 @@ func (conn MyConn) Keys(args []string, server *Server) (err error) {
 
 	return errors.New("Not supported")
 }
-
-
 
 func (conn MyConn) Xread(args []string) (err error) {
 	argLen := len(args)
@@ -370,8 +374,7 @@ func (conn MyConn) Xread(args []string) (err error) {
 			fmt.Print("we got value", args[2])
 			panic("argument is not a number")
 		}
-		// xread block  0  streams  pineapple  0-1
-		// 0	  1      2  3        4          5
+
 		if sleepTime == 0 {
 			listener := make(chan StreamEntry)
 
@@ -401,9 +404,6 @@ func (conn MyConn) Xread(args []string) (err error) {
 
 	}
 
-	fmt.Println("args")
-	fmt.Println(args)
-
 	result := []string{}
 	for i := argsOffset; i < streamNumbers+argsOffset; i++ {
 		streamKey := args[i]
@@ -422,12 +422,9 @@ func (conn MyConn) Xread(args []string) (err error) {
 
 	}
 
-	fmt.Print("what is in result")
-	fmt.Print(result)
-
 	resp := fmt.Sprintf("*%v%v%v", len(result), CLRF, strings.Join(result, ""))
 	if len(result) == 0 {
-		resp = BuildNullBulkString()
+		resp = BuildNullArray()
 	}
 
 	conn.Write([]byte(resp))

@@ -8,85 +8,113 @@ import (
 	"strings"
 )
 
-type CommandDetails struct {
-	command []string
-	length  int
-	raw     string
+type RESPData interface{}
+
+type RESPIntData int
+
+type RESPRecord struct {
+	data   RESPData
+	length int
+	raw    string
 }
 
 var tempRead string = ""
 
-type CommandInput struct {
-	commandStr  []CommandDetails
-	commandByte string
+type RESPParsed struct {
+	records []RESPRecord
+	raw     string
 }
 
-func readInput(conn net.Conn) (CommandInput, error) {
+func readInput(conn net.Conn) (RESPParsed, error) {
 	buf := make([]byte, 1024)
 	n, err := conn.Read(buf)
 	if err != nil {
 		fmt.Print("what we read", string(buf[:n]))
-		return CommandInput{}, err
+		return RESPParsed{}, err
 	}
 
-	command := []CommandDetails{}
+	command := []RESPRecord{}
 	input := string(buf[:n])
 
 	if len(input) == 0 {
-		return CommandInput{
-			commandStr:  command,
-			commandByte: input,
+		return RESPParsed{
+			records: command,
+			raw:     input,
 		}, nil
 	}
 
 	command, tempRead, err = splitMultipleCommandString(tempRead + input)
 
 	if err != nil {
-		return CommandInput{}, err
+		return RESPParsed{}, err
 	}
 
-	return CommandInput{
-		commandStr:  command,
-		commandByte: input,
+	return RESPParsed{
+		records: command,
+		raw:     input,
 	}, nil
 
 }
 
-func splitMultipleCommandString(input string) (res []CommandDetails, tempInp string, err error) {
+func splitMultipleCommandString(input string) (res []RESPRecord, tempInp string, err error) {
 	tempInp = input
 	endIndex := 0
-	var command CommandDetails
+	var record RESPRecord
 
 loop:
 	for len(tempInp) > 0 {
 		indicator := tempInp[0]
 
 		switch indicator {
-		case 43:
-			endIndex, command = handleSimpleString(tempInp)
-
-		case 36:
-			endIndex, command = handleBulkString(tempInp)
-
-		case 42:
-			endIndex, command = handleRespArray(tempInp)
-		case 45:
-			endIndex, command = handleSimpleError(tempInp)
+		case '+':
+			endIndex, record = handleSimpleString(tempInp)
+		case '$':
+			endIndex, record = handleBulkString(tempInp)
+		case '*':
+			endIndex, record = handleRespArray(tempInp)
+		case '-':
+			endIndex, record = handleSimpleError(tempInp)
+		case ':':
+			endIndex, record = handleInteger(tempInp)
 		default:
-			fmt.Println("unsupported break")
+			fmt.Println("unsupported break: ", indicator)
 			break loop
 		}
 		if endIndex == -1 {
 			break loop
 		}
-		res = append(res, command)
+		res = append(res, record)
 		tempInp = tempInp[endIndex:]
 	}
 
 	return res, tempInp, nil
 }
 
-func handleSimpleError(input string) (endIndex int, command CommandDetails) {
+func handleInteger(input string) (endIndex int, command RESPRecord) {
+	index := strings.Index(input, CLRF)
+	// i dont like adding index == -1 in every handler
+	if index == -1 {
+		endIndex = -1
+		return endIndex, command
+	}
+	endIndex = index + len(CLRF)
+
+	integer, err := strconv.Atoi(input[1:index])
+
+	if err != nil {
+		panic(err)
+	}
+
+	command = RESPRecord{
+		data:   RESPIntData(integer),
+		length: len(input[:endIndex]),
+		raw:    input[:endIndex],
+	}
+
+	return endIndex, command
+}
+
+func handleSimpleError(input string) (endIndex int, command RESPRecord) {
 	index := strings.Index(input, CLRF)
 	if index == -1 {
 		endIndex = -1
@@ -94,16 +122,16 @@ func handleSimpleError(input string) (endIndex int, command CommandDetails) {
 	}
 	endIndex = index + len(CLRF)
 
-	command = CommandDetails{
-		command: []string{input[:index]},
-		length:  len(input[:endIndex]),
-		raw:     input[:endIndex],
+	command = RESPRecord{
+		data:   []string{input[:index]},
+		length: len(input[:endIndex]),
+		raw:    input[:endIndex],
 	}
 
 	return endIndex, command
 }
 
-func handleSimpleString(input string) (endIndex int, command CommandDetails) {
+func handleSimpleString(input string) (endIndex int, command RESPRecord) {
 	index := strings.Index(input, CLRF)
 	if index == -1 {
 		fmt.Println("inside?")
@@ -113,23 +141,23 @@ func handleSimpleString(input string) (endIndex int, command CommandDetails) {
 
 	endIndex = index + len(CLRF)
 	if strings.Contains(input, "FULLRESYNC") {
-		command = CommandDetails{
-			command: strings.Split(input[1:index], " "),
-			length:  len(input[:endIndex]),
-			raw:     input[endIndex:],
+		command = RESPRecord{
+			data:   strings.Split(input[1:index], " "),
+			length: len(input[:endIndex]),
+			raw:    input[endIndex:],
 		}
 	} else {
-		command = CommandDetails{
-			command: []string{input[1:index]},
-			length:  len(input[:endIndex]),
-			raw:     input[:endIndex],
+		command = RESPRecord{
+			data:   input[1:index],
+			length: len(input[:endIndex]),
+			raw:    input[:endIndex],
 		}
 	}
 
 	return endIndex, command
 }
 
-func handleBulkString(input string) (endIndex int, command CommandDetails) {
+func handleBulkString(input string) (endIndex int, command RESPRecord) {
 	index := strings.Index(input, CLRF)
 	if index == -1 {
 		endIndex = -1
@@ -145,27 +173,27 @@ func handleBulkString(input string) (endIndex int, command CommandDetails) {
 		fmt.Print("normal command")
 		//normal command
 
-		command = CommandDetails{
-			command: []string{input[index+delimiterLen : endIndex]},
-			length:  len(input[:endIndex]),
-			raw:     input[:endIndex],
+		command = RESPRecord{
+			data:   []string{input[index+delimiterLen : endIndex]},
+			length: len(input[:endIndex]),
+			raw:    input[:endIndex],
 		}
 		endIndex += 2
 	} else {
 		fmt.Print("dont say its rdb-file....")
 		//rdb file
 
-		command = CommandDetails{
-			command: []string{"rdb-file", input[index+delimiterLen : endIndex]},
-			length:  len(input[:endIndex]),
-			raw:     input[:endIndex],
+		command = RESPRecord{
+			data:   []string{"rdb-file", input[index+delimiterLen : endIndex]},
+			length: len(input[:endIndex]),
+			raw:    input[:endIndex],
 		}
 	}
 
 	return endIndex, command
 }
 
-func handleRespArray(input string) (endIndex int, command CommandDetails) {
+func handleRespArray(input string) (endIndex int, command RESPRecord) {
 	fmt.Print("handle resp arr")
 	index := strings.Index(input, CLRF)
 	if index == -1 {
@@ -191,10 +219,10 @@ func handleRespArray(input string) (endIndex int, command CommandDetails) {
 		temp = append(temp, parts[i])
 	}
 
-	command = CommandDetails{
-		command: temp,
-		length:  len(input[:endIndex+2]),
-		raw:     input[:endIndex+2],
+	command = RESPRecord{
+		data:   temp,
+		length: len(input[:endIndex+2]),
+		raw:    input[:endIndex+2],
 	}
 
 	return endIndex + 2, command

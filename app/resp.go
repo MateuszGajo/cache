@@ -53,12 +53,16 @@ func BuildNullBulkString() string {
 	return fmt.Sprintf("$-1%v", CLRF)
 }
 
+func BuildNullArray() string {
+	return fmt.Sprintf("*-1%v", CLRF)
+}
+
 func BuildRespInt(val int) string {
 	return fmt.Sprintf(":%v%v", val, CLRF)
 }
 
 func BuildSimpleError(errType string, message string) string {
-	return fmt.Sprintf("-%v %v%v", errType, message,CLRF)
+	return fmt.Sprintf("-%v %v%v", errType, message, CLRF)
 }
 
 func BuildRESPArray(args []string) string {
@@ -70,4 +74,3 @@ func BuildRESPArray(args []string) string {
 
 	return resp
 }
-   

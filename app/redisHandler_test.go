@@ -1,6 +1,8 @@
 package main
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestDeserialization(t *testing.T) {
 	res := Deserialize("id:123,var1:20,var2:30")
@@ -25,9 +27,6 @@ func TestEmptyDeserialization(t *testing.T) {
 	}
 
 }
-
-
-
 
 func TestVerifyIntegrityNonEmpty(t *testing.T) {
 

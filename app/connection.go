@@ -12,27 +12,27 @@ import (
 type Commands string
 
 const (
-	PING Commands = "PING"
-	ECHO Commands = "ECHO"
-	SET Commands = "SET"
-	GET Commands = "GET"
-	INFO Commands = "INFO"
-	REPLCONF Commands = "REPLCONF"
-	PSYNC Commands = "PSYNC"
+	PING       Commands = "PING"
+	ECHO       Commands = "ECHO"
+	SET        Commands = "SET"
+	GET        Commands = "GET"
+	INFO       Commands = "INFO"
+	REPLCONF   Commands = "REPLCONF"
+	PSYNC      Commands = "PSYNC"
 	FULLRESYNC Commands = "FULLRESYNC"
-	RDBFILE Commands = "RDB-FILE"
-	WAIT Commands = "WAIT"
-	TYPE Commands = "TYPE"
-	XADD Commands = "XADD"
-	XRANGE Commands = "XRANGE"
-	XREAD Commands = "XREAD"
-	CONFIG Commands = "CONFIG"
-	KEYS Commands = "KEYS"
+	RDBFILE    Commands = "RDB-FILE"
+	WAIT       Commands = "WAIT"
+	TYPE       Commands = "TYPE"
+	RPUSH      Commands = "RPUSH"
+	XADD       Commands = "XADD"
+	XRANGE     Commands = "XRANGE"
+	XREAD      Commands = "XREAD"
+	CONFIG     Commands = "CONFIG"
+	KEYS       Commands = "KEYS"
 )
 
-
-func propagte (command CommandDetails, server *Server) {
-	for _,v := range server.masterConfig.replicaConnections {
+func propagte(command RESPRecord, server *Server) {
+	for _, v := range server.masterConfig.replicaConnections {
 		v.bytesWrite += command.length
 	}
 
@@ -60,8 +60,8 @@ func handleConenction(conn MyConn, server *Server) {
 			break
 		}
 
-		for _, v := range comamndInput.commandStr {
-			err = executeCommand(v, comamndInput.commandByte, conn, server)
+		for _, v := range comamndInput.records {
+			err = executeCommand(v, comamndInput.raw, conn, server)
 
 			if err != nil {
 				fmt.Println("Error while reaidng", err)
@@ -72,23 +72,22 @@ func handleConenction(conn MyConn, server *Server) {
 	}
 }
 
-func executeCommand(commandDetails  CommandDetails, bytes string, conn MyConn, server *Server) (err error){
-	args := commandDetails.command
+func executeCommand(commandDetails RESPRecord, bytes string, conn MyConn, server *Server) (err error) {
+	args := commandDetails.data.([]string)
 
-		if len(args) == 0 {
-			fmt.Println("No argument passed")
-			return err
-		}
+	if len(args) == 0 {
+		fmt.Println("No argument passed")
+		return err
+	}
 
 	command := Commands(strings.ToUpper(args[0]))
 
-
-	switch(command) {
+	switch command {
 	case PING:
 		err = conn.Ping()
 	case ECHO:
 		err = conn.Echo(args)
-	case SET:	
+	case SET:
 		err = conn.Set(args)
 	case GET:
 		err = conn.Get(args, server)
@@ -98,6 +97,8 @@ func executeCommand(commandDetails  CommandDetails, bytes string, conn MyConn, s
 		err = conn.ReplConf(args, server)
 	case TYPE:
 		err = conn.Type(args)
+	case RPUSH:
+		err = conn.RPush(args, server)
 	case XADD:
 		err = conn.Xadd(args)
 	case XRANGE:
@@ -108,24 +109,25 @@ func executeCommand(commandDetails  CommandDetails, bytes string, conn MyConn, s
 		err = conn.Keys(args, server)
 	case CONFIG:
 		err = conn.Config(args, server)
-	case PSYNC: 
+	case PSYNC:
 		err = conn.Psync(server)
 		server.masterConfig.replicaConnections[conn.ID] = &ReplicaConn{
-			Conn: conn,
+			Conn:       conn,
 			bytesWrite: 0,
-			byteAck: 0,
-			};
+			byteAck:    0,
+		}
 	case FULLRESYNC:
 		// empty for now
 	case RDBFILE:
 		// empty for now
 	case WAIT:
 		err = conn.Wait(args, server)
-	default: {
-		err = fmt.Errorf("invalid command received:%v", command)
-		fmt.Println("invalid command received:", command)
-		conn.Write([]byte("-ERR unknown command\r\n"))
-	}
+	default:
+		{
+			err = fmt.Errorf("invalid command received:%v", command)
+			fmt.Println("invalid command received:", command)
+			conn.Write([]byte("-ERR unknown command\r\n"))
+		}
 	}
 	whiteReplCommands := map[Commands]bool{SET: true}
 	handshakeSyncCommands := map[Commands]bool{RDBFILE: true, FULLRESYNC: true}
@@ -134,11 +136,10 @@ func executeCommand(commandDetails  CommandDetails, bytes string, conn MyConn, s
 		propagte(commandDetails, server)
 	}
 
-	if(!handshakeSyncCommands[command]) {
+	if !handshakeSyncCommands[command] {
 		server.replicaConfig.byteProcessed += commandDetails.length
 	}
 
-	
 	if err != nil {
 		fmt.Println("Error writing to connection: ", err.Error())
 		return err
@@ -147,9 +148,9 @@ func executeCommand(commandDetails  CommandDetails, bytes string, conn MyConn, s
 	return err
 }
 
-func handShake(server *Server){
+func handShake(server *Server) {
 	fmt.Println("hello")
-	conn, err := net.Dial("tcp", server.replicaConfig.masterAddress + ":" + server.replicaConfig.masterPort)
+	conn, err := net.Dial("tcp", server.replicaConfig.masterAddress+":"+server.replicaConfig.masterPort)
 
 	if err != nil {
 		fmt.Printf("cannot connect to %v:%v", server.replicaConfig.masterAddress, server.replicaConfig.masterPort)
@@ -170,13 +171,13 @@ func handShake(server *Server){
 		return
 	}
 
-	args := inputComm.commandStr[0].command
+	args := inputComm.records[0].data.([]string)
 	if args[0] != "PONG" {
 		fmt.Print("Response its invalid")
 		os.Exit(1)
 	}
 
-	conn.Write([]byte(BuildRESPArray([]string{"REPLCONF","listening-port",server.port})))
+	conn.Write([]byte(BuildRESPArray([]string{"REPLCONF", "listening-port", server.port})))
 
 	inputComm, err = readInput(conn)
 	if err != nil {
@@ -185,28 +186,28 @@ func handShake(server *Server){
 		return
 	}
 
-	args = inputComm.commandStr[0].command
+	args = inputComm.records[0].data.([]string)
 	if args[0] != "OK" {
 		fmt.Printf("Response its invalid, expected ok we got:%v", args[0])
 		os.Exit(1)
 	}
 
-	conn.Write([]byte(BuildRESPArray([]string {"REPLCONF","capa","psync2"})))
+	conn.Write([]byte(BuildRESPArray([]string{"REPLCONF", "capa", "psync2"})))
 
-	inputComm,err = readInput(conn)
+	inputComm, err = readInput(conn)
 	if err != nil {
 		fmt.Print("error while replConf capa  master replica")
 		conn.Close()
 		return
 	}
 
-	args = inputComm.commandStr[0].command
+	args = inputComm.records[0].data.([]string)
 	if args[0] != "OK" {
 		fmt.Printf("Response its invalid, expected ok we got:%v", args[0])
 		os.Exit(1)
 	}
 
-	conn.Write([]byte(BuildRESPArray([]string{"PSYNC","?","-1"})))
+	conn.Write([]byte(BuildRESPArray([]string{"PSYNC", "?", "-1"})))
 
-	go handleConenction(MyConn{Conn: conn, ignoreWrites: false, ID: strconv.Itoa(rand.IntN(100))}, &Server{}) 
+	go handleConenction(MyConn{Conn: conn, ignoreWrites: false, ID: strconv.Itoa(rand.IntN(100))}, &Server{})
 }

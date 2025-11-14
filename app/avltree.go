@@ -17,7 +17,7 @@ type TreeNode struct {
 }
 
 type TreeNodeResult struct {
-	id string
+	id   string
 	data []string
 }
 
@@ -68,7 +68,6 @@ func rotateLeft(node *TreeNode) *TreeNode {
 
 }
 
-// add balancing
 func Insert(node *TreeNode, id string, entry StreamEntry) *TreeNode {
 	idSplitted := strings.Split(id, "-")
 	timeStamp := idSplitted[0]
@@ -108,36 +107,34 @@ func Insert(node *TreeNode, id string, entry StreamEntry) *TreeNode {
 	return node
 }
 
-
-
 func Search(node *TreeNode, idStart string, idEnd string) []TreeNodeResult {
 	idStartSplitted := strings.Split(idStart, "-")
-	timeStampStart:= idStartSplitted[0]
-	sequenceNumberStart:= idStartSplitted[1]
+	timeStampStart := idStartSplitted[0]
+	sequenceNumberStart := idStartSplitted[1]
 
 	idEndSplitted := strings.Split(idEnd, "-")
-	timeStampEnd:= idEndSplitted[0]
-	sequenceNumberEnd:= idEndSplitted[1]
-	if (node == nil) {
+	timeStampEnd := idEndSplitted[0]
+	sequenceNumberEnd := idEndSplitted[1]
+	if node == nil {
 		return []TreeNodeResult{}
 	}
 
 	nodeNumber := node.Entry.Timestamp + node.Entry.SequenceNumber
-	startNumber := timeStampStart+sequenceNumberStart
+	startNumber := timeStampStart + sequenceNumberStart
 	endNumber := timeStampEnd + sequenceNumberEnd
 
-	if (nodeNumber >= startNumber && nodeNumber <= endNumber){
-			var result []TreeNodeResult
-		
-			leftResults := Search(node.Left, idStart, idEnd)
-			rightResults := Search(node.Right, idStart, idEnd)
-			result = append(result, leftResults...)
-			result = append(result, TreeNodeResult{id: node.Entry.Timestamp +"-"+ node.Entry.SequenceNumber, data:node.Entry.Data})
-			result = append(result, rightResults...)
-			return result
-		} else if (nodeNumber < startNumber) {
-			return Search(node.Right,idStart, idEnd)
-		} else {
-			return Search(node.Left, idStart, idEnd)
-		}
+	if nodeNumber >= startNumber && nodeNumber <= endNumber {
+		var result []TreeNodeResult
+
+		leftResults := Search(node.Left, idStart, idEnd)
+		rightResults := Search(node.Right, idStart, idEnd)
+		result = append(result, leftResults...)
+		result = append(result, TreeNodeResult{id: node.Entry.Timestamp + "-" + node.Entry.SequenceNumber, data: node.Entry.Data})
+		result = append(result, rightResults...)
+		return result
+	} else if nodeNumber < startNumber {
+		return Search(node.Right, idStart, idEnd)
+	} else {
+		return Search(node.Left, idStart, idEnd)
+	}
 }
