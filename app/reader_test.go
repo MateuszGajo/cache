@@ -7,43 +7,31 @@ import (
 )
 
 func TestSingleCommand(t *testing.T) {
-	tmpString := fmt.Sprintf("*3%v$3%vset%v$3%vabc%v$3%vdef%v", CLRF, CLRF, CLRF, CLRF, CLRF, CLRF, CLRF)
+	tmpString := BuildRESPArray([]string{"set", "abc", "def"})
 
 	resp, _, _ := splitMultipleCommandString(tmpString)
+	commandOneArray := resp[0].data.([]string)
 
-	fmt.Print(resp)
-
-	if !reflect.DeepEqual(resp[0].data, []string{"set", "abc", "def"}) {
-		t.Fatalf("expected %v, got: %v", []string{"set", "abc", "def"}, resp[0].data)
+	if !reflect.DeepEqual(commandOneArray, []string{"set", "abc", "def"}) {
+		t.Fatalf("expected %v, got: %v", []string{"set", "abc", "def"}, commandOneArray)
 	}
 
 }
 
-// func TestSingleCommand2(t *testing.T) {
-// 	tmpString := "-ERR The ID specified in XADD is equal or smaller than the target stream top item\r\n$3\r\n1-1\r\n"
-
-// 	resp, _,_:= splitMultipleCommandString(tmpString)
-// 	t.Fatalf("%q",resp)
-
-// 	if !reflect.DeepEqual(resp[0].command, []string{"set", "abc", "def"} ){
-// 		t.Fatalf("expected %v, got: %q",  []string{"set", "abc", "def"}, resp[0].command)
-// 	}
-
-// }
-
 func TestMultipleCommand(t *testing.T) {
-	tmpString := fmt.Sprintf("+ok%v*3%v$3%vset%v$3%vabc%v$3%vdef%v", CLRF, CLRF, CLRF, CLRF, CLRF, CLRF, CLRF, CLRF)
+	tmpString := BuildSimpleString("ok") + BuildRESPArray([]string{"set", "abc", "def"})
 
 	resp, _, _ := splitMultipleCommandString(tmpString)
 
-	fmt.Print(resp)
+	commandOneSimpleString := resp[0].data.(string)
+	commandTwoArray := resp[1].data.([]string)
 
-	if !reflect.DeepEqual(resp[0].data, []string{"ok"}) {
-		t.Fatalf("expected %v, got: %v", []string{"ok"}, resp[0].data)
+	if !reflect.DeepEqual(commandOneSimpleString, "ok") {
+		t.Fatalf("expected %v, got: %v", "ok", commandOneSimpleString)
 	}
 
-	if !reflect.DeepEqual(resp[1].data, []string{"set", "abc", "def"}) {
-		t.Fatalf("expected %v, got: %v", []string{"set", "abc", "def"}, resp[1].data)
+	if !reflect.DeepEqual(commandTwoArray, []string{"set", "abc", "def"}) {
+		t.Fatalf("expected %v, got: %v", []string{"set", "abc", "def"}, commandTwoArray)
 	}
 
 }

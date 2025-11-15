@@ -84,7 +84,6 @@ func (conn MyConn) Info(args []string, serverCon *Server) (err error) {
 var linkedList = make(map[string]LinkedList)
 
 func (conn MyConn) RPush(args []string, serverCon *Server) (err error) {
-	fmt.Println("enter rpush??")
 	if len(args) < 2 {
 		return fmt.Errorf("Expected at least two arguments")
 	}
@@ -99,7 +98,6 @@ func (conn MyConn) RPush(args []string, serverCon *Server) (err error) {
 	result := list.rpush(args[1])
 
 	response := BuildRespInt(result)
-	fmt.Println("hello write fking resp", response)
 	_, err = conn.Write([]byte(response))
 	return err
 }
@@ -114,9 +112,7 @@ const (
 )
 
 func (conn MyConn) replConfConfirm() (err error) {
-	fmt.Println("repl cofnirm")
 	result := BuildSimpleString("OK")
-	fmt.Println("simple string")
 	_, err = conn.Write([]byte(result))
 	return err
 }
@@ -131,9 +127,6 @@ func (conn MyConn) replConfAct(args []string, server *Server) (err error) {
 	bytes := args[2]
 	for _, rc := range server.masterConfig.replicaConnections {
 		if rc.RemoteAddr().String() == conn.RemoteAddr().String() {
-			fmt.Println("act bytes for")
-			fmt.Print(rc.RemoteAddr().String())
-			fmt.Fprintln(os.Stdout, []any{"\n, bytes %v", bytes}...)
 			conv, _ := strconv.Atoi(bytes)
 			rc.byteAck = conv
 		}
@@ -159,7 +152,6 @@ func (conn MyConn) ReplConf(args []string, server *Server) (err error) {
 
 func (conn MyConn) Psync(serverCon *Server) (err error) {
 	resync := fmt.Sprintf("+FULLRESYNC %v %v%v", serverCon.masterConfig.replicaId, strconv.Itoa(serverCon.masterConfig.replicaOffSet), CLRF)
-	fmt.Println("sedning resync")
 	_, err = conn.Write([]byte(resync))
 	if err != nil {
 		return err
@@ -181,23 +173,6 @@ func (conn MyConn) Type(args []string) (err error) {
 	result := BuildSimpleString(HandleGetType(key))
 	_, err = conn.Write([]byte(result))
 	return err
-}
-
-func Deserialize(input string) [][]string {
-	if input == "" {
-		return [][]string{}
-	}
-
-	entries := strings.Split(input, ",")
-
-	result := make([][]string, 0, len(entries)*2)
-	for i := 0; i < len(entries); i++ {
-		split := strings.Split(entries[i], ":")
-		entry := []string{split[0], split[1]}
-		result = append(result, entry)
-	}
-
-	return result
 }
 
 func VerifyStreamIntegrity(lastEntry string, newEntryId string) (bool, string) {
@@ -407,9 +382,6 @@ func (conn MyConn) Xread(args []string) (err error) {
 	result := []string{}
 	for i := argsOffset; i < streamNumbers+argsOffset; i++ {
 		streamKey := args[i]
-		fmt.Println("what we getting")
-		fmt.Println(i + streamNumbers)
-		fmt.Println(args[i+streamNumbers])
 		streamStart := args[i+streamNumbers]
 
 		stream, err := getStreamData(streamKey, streamStart, "+")
@@ -434,8 +406,6 @@ func (conn MyConn) Xread(args []string) (err error) {
 
 func getStreamData(key, start, end string) (string, error) {
 	stream := HandleGetStream(key)
-	fmt.Print(stream)
-	fmt.Println("/n", key, start, end)
 	if (stream == Stream{}) {
 		fmt.Print("stream does not exist")
 		os.Exit(1)

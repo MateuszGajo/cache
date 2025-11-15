@@ -29,7 +29,6 @@ func readInput(conn net.Conn) (RESPParsed, error) {
 	buf := make([]byte, 1024)
 	n, err := conn.Read(buf)
 	if err != nil {
-		fmt.Print("what we read", string(buf[:n]))
 		return RESPParsed{}, err
 	}
 
@@ -170,8 +169,6 @@ func handleBulkString(input string) (endIndex int, command RESPRecord) {
 	endIndex = commLen + index + delimiterLen
 
 	if len(input) >= endIndex+delimiterLen && input[endIndex] == 13 && input[endIndex+1] == 10 {
-		fmt.Print("normal command")
-		//normal command
 
 		command = RESPRecord{
 			data:   []string{input[index+delimiterLen : endIndex]},
@@ -180,9 +177,6 @@ func handleBulkString(input string) (endIndex int, command RESPRecord) {
 		}
 		endIndex += 2
 	} else {
-		fmt.Print("dont say its rdb-file....")
-		//rdb file
-
 		command = RESPRecord{
 			data:   []string{"rdb-file", input[index+delimiterLen : endIndex]},
 			length: len(input[:endIndex]),
@@ -194,10 +188,8 @@ func handleBulkString(input string) (endIndex int, command RESPRecord) {
 }
 
 func handleRespArray(input string) (endIndex int, command RESPRecord) {
-	fmt.Print("handle resp arr")
 	index := strings.Index(input, CLRF)
 	if index == -1 {
-		fmt.Println("1")
 		endIndex = -1
 		return endIndex, command
 	}
@@ -205,15 +197,12 @@ func handleRespArray(input string) (endIndex int, command RESPRecord) {
 	commLen, _ := strconv.Atoi(input[1:index])
 	endIndex = findOccurance(input, "\r", commLen*2)
 	if endIndex == -1 {
-		fmt.Println("2")
 		endIndex = -1
 		return endIndex, command
 	}
 
 	stringToDo := input[:endIndex]
 	parts := strings.Split(stringToDo, CLRF)
-	fmt.Println("parts")
-	fmt.Println(parts)
 	temp := []string{}
 	for i := 2; i < len(parts); i += 2 {
 		temp = append(temp, parts[i])

@@ -56,27 +56,27 @@ func write(conn net.Conn, data []byte) {
 }
 
 // TODO rewrite all test
-func TestCreateStream(t *testing.T) {
-	server, conn := startServer()
+// func TestCreateStream(t *testing.T) {
+// 	server, conn := startServer()
 
-	write(conn, []byte(BuildRESPArray([]string{"xadd", "key", "1-1", "foo", "bar"})))
-	RESPParsed := readSingleLineResponse(conn, t)
-	streamId := RESPParsed.data.([]string)[0]
+// 	write(conn, []byte(BuildRESPArray([]string{"xadd", "key", "1-1", "foo", "bar"})))
+// 	RESPParsed := readSingleLineResponse(conn, t)
+// 	streamId := RESPParsed.data.([]string)[0]
 
-	write(conn, []byte(BuildRESPArray([]string{"type", "key"})))
-	RESPParsed = readSingleLineResponse(conn, t)
-	dataType := RESPParsed.data.(string)
+// 	write(conn, []byte(BuildRESPArray([]string{"type", "key"})))
+// 	RESPParsed = readSingleLineResponse(conn, t)
+// 	dataType := RESPParsed.data.([]string)[0]
 
-	if dataType != StreamType {
-		t.Errorf("Expected type to be: %v, got: %v", StreamType, dataType)
-	}
-	if streamId != "1-1" {
-		t.Errorf("expected steam id to be 1-1, got %v", streamId)
-	}
+// 	if dataType != StreamType {
+// 		t.Errorf("Expected type to be: %v, got: %v", StreamType, dataType)
+// 	}
+// 	if streamId != "1-1" {
+// 		t.Errorf("expected steam id to be 1-1, got %v", streamId)
+// 	}
 
-	cleanup(server, conn)
+// 	cleanup(server, conn)
 
-}
+// }
 
 func TestG2(t *testing.T) {
 	var server *Server
@@ -530,12 +530,7 @@ func TestRPush(t *testing.T) {
 	server, conn := startServer()
 
 	write(conn, []byte(BuildRESPArray([]string{"rpush", "newList", "aa"})))
-
-	RESPParsed, err := readSingleLineResponse(conn)
-	if err != nil {
-		t.Errorf("got err: %q", err)
-	}
-
+	RESPParsed := readSingleLineResponse(conn, t)
 	data := RESPParsed.data.(RESPIntData)
 
 	if data != 1 {

@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 )
@@ -20,15 +19,12 @@ func handleSet(key string, value interface{}, expiryTime *int, recordType string
 	lock.Lock()
 	defer lock.Unlock()
 	if expiryTime != nil {
-		fmt.Println("save value with time expiry", key, time.Now().Add(time.Duration(*expiryTime)*time.Millisecond))
-		fmt.Println(expiryTime)
 		m[key] = CustomSetStore{
 			Value:    value,
 			ExpireAt: time.Now().Add(time.Duration(*expiryTime) * time.Millisecond),
 			Type:     recordType,
 		}
 	} else {
-		fmt.Println("save value with no time expirty", key)
 		m[key] = CustomSetStore{
 			Value:    value,
 			ExpireAt: time.Time{},
@@ -44,8 +40,6 @@ func handleGet(key string) (CustomSetStore, error) {
 	lock.RLock()
 	r, ok := m[key]
 
-	fmt.Printf("get val %+v \n", r)
-	fmt.Println(time.Now())
 	if !ok || (time.Now().After(r.ExpireAt) && r.ExpireAt != time.Time{}) {
 		return CustomSetStore{}, errors.New("There is no value")
 	}
@@ -56,14 +50,9 @@ func handleGet(key string) (CustomSetStore, error) {
 func HandleGetString(key string, server *Server) (string, error) {
 	res, err := handleGet(key)
 
-	fmt.Println("halo halo get get")
-	fmt.Println(res)
-
 	if (res == CustomSetStore{}) {
 
 		resp := readFile(server.dbConfig.dirName + "/" + server.dbConfig.fileName)
-		fmt.Println("hello")
-		fmt.Println(resp)
 		res := ""
 		for _, v := range resp {
 			if v.key == key && (v.exp.UnixMilli() == 0 || v.exp.After(time.Now())) {

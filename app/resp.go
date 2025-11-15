@@ -41,7 +41,6 @@ func RESPBulkString(input string) []string {
 }
 
 func BuildSimpleString(message string) string {
-	fmt.Print("Hello")
 	return fmt.Sprintf("+%v%v", message, CLRF)
 }
 
