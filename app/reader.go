@@ -42,7 +42,10 @@ func readInput(conn net.Conn) (RESPParsed, error) {
 		}, nil
 	}
 
+	fmt.Printf("what we got here? :%q\n", tempRead+input)
+
 	command, tempRead, err = splitMultipleCommandString(tempRead + input)
+	fmt.Printf("resp command: %+v \n", command)
 
 	if err != nil {
 		return RESPParsed{}, err
