@@ -67,11 +67,11 @@ func writeMany(conn net.Conn, data [][]byte) {
 func TestCreateStream(t *testing.T) {
 	server, conn := startServer()
 
-	write(conn, []byte(BuildRESPArray([]string{"xadd", "key", "1-1", "foo", "bar"})))
+	write(conn, []byte(BuildPrimitiveRESPArray([]string{"xadd", "key", "1-1", "foo", "bar"})))
 	RESPParsed := readSingleLineResponse(conn, t)
 	addStreamResp := RESPParsed.data.([]string)[0]
 
-	write(conn, []byte(BuildRESPArray([]string{"type", "key"})))
+	write(conn, []byte(BuildPrimitiveRESPArray([]string{"type", "key"})))
 	RESPParsed = readSingleLineResponse(conn, t)
 	dataTypeResp := RESPParsed.data.([]string)[0]
 
@@ -89,11 +89,11 @@ func TestCreateStream(t *testing.T) {
 func TestCreateStreamWithDuplicate(t *testing.T) {
 	server, conn := startServer()
 
-	write(conn, []byte(BuildRESPArray([]string{"xadd", "key", "1-1", "foo", "bar"})))
+	write(conn, []byte(BuildPrimitiveRESPArray([]string{"xadd", "key", "1-1", "foo", "bar"})))
 	RESPParsed := readSingleLineResponse(conn, t)
 	addStreamResp := RESPParsed.data.([]string)[0]
 
-	write(conn, []byte(BuildRESPArray([]string{"xadd", "key", "1-1", "foo", "bar"})))
+	write(conn, []byte(BuildPrimitiveRESPArray([]string{"xadd", "key", "1-1", "foo", "bar"})))
 	RESPParsed = readSingleLineResponse(conn, t)
 	addDuplicateStreamResp := RESPParsed.data.([]string)[0]
 
@@ -112,11 +112,11 @@ func TestCreateStreamWithDuplicate(t *testing.T) {
 func TestAutoGenerateStreamSequenceNumber(t *testing.T) {
 	server, conn := startServer()
 
-	write(conn, []byte(BuildRESPArray([]string{"xadd", "key", "1-*", "foo", "bar"})))
+	write(conn, []byte(BuildPrimitiveRESPArray([]string{"xadd", "key", "1-*", "foo", "bar"})))
 	RESPParsed := readSingleLineResponse(conn, t)
 	addFirstStreamResp := RESPParsed.data.([]string)[0]
 
-	write(conn, []byte(BuildRESPArray([]string{"xadd", "key", "1-*", "foo", "bar"})))
+	write(conn, []byte(BuildPrimitiveRESPArray([]string{"xadd", "key", "1-*", "foo", "bar"})))
 	RESPParsed = readSingleLineResponse(conn, t)
 	addSecondStreamResp := RESPParsed.data.([]string)[0]
 
@@ -133,11 +133,11 @@ func TestAutoGenerateStreamSequenceNumber(t *testing.T) {
 func TestAutoGenerateSequenceNumberWith0Prefix(t *testing.T) {
 	server, conn := startServer()
 
-	write(conn, []byte(BuildRESPArray([]string{"xadd", "key", "0-*", "foo", "bar"})))
+	write(conn, []byte(BuildPrimitiveRESPArray([]string{"xadd", "key", "0-*", "foo", "bar"})))
 	RESPParsed := readSingleLineResponse(conn, t)
 	addFirstStreamResp := RESPParsed.data.([]string)[0]
 
-	write(conn, []byte(BuildRESPArray([]string{"xadd", "key", "1-*", "foo", "bar"})))
+	write(conn, []byte(BuildPrimitiveRESPArray([]string{"xadd", "key", "1-*", "foo", "bar"})))
 	RESPParsed = readSingleLineResponse(conn, t)
 	addSecondStreamResp := RESPParsed.data.([]string)[0]
 
@@ -154,7 +154,7 @@ func TestAutoGenerateSequenceNumberWith0Prefix(t *testing.T) {
 func TestAutoGenerateSequenceAndTime(t *testing.T) {
 	server, conn := startServer()
 
-	write(conn, []byte(BuildRESPArray([]string{"xadd", "key", "*", "foo", "bar"})))
+	write(conn, []byte(BuildPrimitiveRESPArray([]string{"xadd", "key", "*", "foo", "bar"})))
 	RESPParsed := readSingleLineResponse(conn, t)
 	addStreamResp := RESPParsed.data.([]string)[0]
 
@@ -177,15 +177,15 @@ func TestAutoGenerateSequenceAndTime(t *testing.T) {
 func TestReadingStreamRange(t *testing.T) {
 	server, conn := startServer()
 	streams := [][]byte{
-		[]byte(BuildRESPArray([]string{"xadd", "key", "0-1", "foo", "bar"})),
-		[]byte(BuildRESPArray([]string{"xadd", "key", "0-2", "foo", "bar"})),
-		[]byte(BuildRESPArray([]string{"xadd", "key", "0-3", "foo", "bar"})),
-		[]byte(BuildRESPArray([]string{"xadd", "key", "0-4", "foo", "bar"})),
+		[]byte(BuildPrimitiveRESPArray([]string{"xadd", "key", "0-1", "foo", "bar"})),
+		[]byte(BuildPrimitiveRESPArray([]string{"xadd", "key", "0-2", "foo", "bar"})),
+		[]byte(BuildPrimitiveRESPArray([]string{"xadd", "key", "0-3", "foo", "bar"})),
+		[]byte(BuildPrimitiveRESPArray([]string{"xadd", "key", "0-4", "foo", "bar"})),
 	}
 
 	writeMany(conn, streams)
 
-	write(conn, []byte(BuildRESPArray([]string{"xrange", "key", "0-2", "0-4"})))
+	write(conn, []byte(BuildPrimitiveRESPArray([]string{"xrange", "key", "0-2", "0-4"})))
 	RESPParsed := readSingleLineResponse(conn, t)
 	respData := RESPParsed.data.([]string)
 	fmt.Println(respData)
@@ -222,7 +222,7 @@ func TestG7(t *testing.T) {
 		t.Errorf("got err: %q", err)
 	}
 
-	_, err = conn.Write([]byte(BuildRESPArray([]string{"xadd", "key", "0-1", "foo", "bar"})))
+	_, err = conn.Write([]byte(BuildPrimitiveRESPArray([]string{"xadd", "key", "0-1", "foo", "bar"})))
 	if err != nil {
 		t.Errorf("got err: %q", err)
 	}
@@ -232,7 +232,7 @@ func TestG7(t *testing.T) {
 		t.Errorf("got err: %q", err)
 	}
 
-	_, err = conn.Write([]byte(BuildRESPArray([]string{"xadd", "key", "0-2", "foo", "bar"})))
+	_, err = conn.Write([]byte(BuildPrimitiveRESPArray([]string{"xadd", "key", "0-2", "foo", "bar"})))
 	if err != nil {
 		t.Errorf("got err: %q", err)
 	}
@@ -242,7 +242,7 @@ func TestG7(t *testing.T) {
 		t.Errorf("got err: %q", err)
 	}
 
-	_, err = conn.Write([]byte(BuildRESPArray([]string{"xrange", "key", "-", "0-2"})))
+	_, err = conn.Write([]byte(BuildPrimitiveRESPArray([]string{"xrange", "key", "-", "0-2"})))
 	if err != nil {
 		t.Errorf("got err: %q", err)
 	}
@@ -279,7 +279,7 @@ func TestG8(t *testing.T) {
 		t.Errorf("got err: %q", err)
 	}
 
-	_, err = conn.Write([]byte(BuildRESPArray([]string{"xadd", "key", "0-1", "foo", "bar"})))
+	_, err = conn.Write([]byte(BuildPrimitiveRESPArray([]string{"xadd", "key", "0-1", "foo", "bar"})))
 	if err != nil {
 		t.Errorf("got err: %q", err)
 	}
@@ -289,7 +289,7 @@ func TestG8(t *testing.T) {
 		t.Errorf("got err: %q", err)
 	}
 
-	_, err = conn.Write([]byte(BuildRESPArray([]string{"xadd", "key", "0-2", "foo", "bar"})))
+	_, err = conn.Write([]byte(BuildPrimitiveRESPArray([]string{"xadd", "key", "0-2", "foo", "bar"})))
 	if err != nil {
 		t.Errorf("got err: %q", err)
 	}
@@ -299,7 +299,7 @@ func TestG8(t *testing.T) {
 		t.Errorf("got err: %q", err)
 	}
 
-	_, err = conn.Write([]byte(BuildRESPArray([]string{"xrange", "key", "0-0", "+"})))
+	_, err = conn.Write([]byte(BuildPrimitiveRESPArray([]string{"xrange", "key", "0-0", "+"})))
 	if err != nil {
 		t.Errorf("got err: %q", err)
 	}
@@ -336,7 +336,7 @@ func TestG9(t *testing.T) {
 		t.Errorf("got err: %q", err)
 	}
 
-	_, err = conn.Write([]byte(BuildRESPArray([]string{"xadd", "testStream", "0-1", "temperature", "96"})))
+	_, err = conn.Write([]byte(BuildPrimitiveRESPArray([]string{"xadd", "testStream", "0-1", "temperature", "96"})))
 	if err != nil {
 		t.Errorf("got err: %q", err)
 	}
@@ -346,7 +346,7 @@ func TestG9(t *testing.T) {
 		t.Errorf("got err: %q", err)
 	}
 
-	_, err = conn.Write([]byte(BuildRESPArray([]string{"xread", "streams", "testStream", "0-0"})))
+	_, err = conn.Write([]byte(BuildPrimitiveRESPArray([]string{"xread", "streams", "testStream", "0-0"})))
 	if err != nil {
 		t.Errorf("got err: %q", err)
 	}
@@ -370,7 +370,7 @@ func TestG9(t *testing.T) {
 func TestRPush(t *testing.T) {
 	server, conn := startServer()
 
-	write(conn, []byte(BuildRESPArray([]string{"rpush", "newList", "aa"})))
+	write(conn, []byte(BuildPrimitiveRESPArray([]string{"rpush", "newList", "aa"})))
 	RESPParsed := readSingleLineResponse(conn, t)
 	data := RESPParsed.data.(RESPIntData)
 

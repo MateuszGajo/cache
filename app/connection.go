@@ -156,7 +156,7 @@ func handShake(server *Server) {
 		fmt.Printf("cannot connect to %v:%v", server.replicaConfig.masterAddress, server.replicaConfig.masterPort)
 	}
 
-	_, err = conn.Write([]byte(BuildRESPArray([]string{"ping"})))
+	_, err = conn.Write([]byte(BuildPrimitiveRESPArray([]string{"ping"})))
 
 	if err != nil {
 		fmt.Print("error while pinging master replica", err)
@@ -177,7 +177,7 @@ func handShake(server *Server) {
 		os.Exit(1)
 	}
 
-	conn.Write([]byte(BuildRESPArray([]string{"REPLCONF", "listening-port", server.port})))
+	conn.Write([]byte(BuildPrimitiveRESPArray([]string{"REPLCONF", "listening-port", server.port})))
 
 	inputComm, err = readInput(conn)
 	if err != nil {
@@ -192,7 +192,7 @@ func handShake(server *Server) {
 		os.Exit(1)
 	}
 
-	conn.Write([]byte(BuildRESPArray([]string{"REPLCONF", "capa", "psync2"})))
+	conn.Write([]byte(BuildPrimitiveRESPArray([]string{"REPLCONF", "capa", "psync2"})))
 
 	inputComm, err = readInput(conn)
 	if err != nil {
@@ -207,7 +207,7 @@ func handShake(server *Server) {
 		os.Exit(1)
 	}
 
-	conn.Write([]byte(BuildRESPArray([]string{"PSYNC", "?", "-1"})))
+	conn.Write([]byte(BuildPrimitiveRESPArray([]string{"PSYNC", "?", "-1"})))
 
 	go handleConenction(MyConn{Conn: conn, ignoreWrites: false, ID: strconv.Itoa(rand.IntN(100))}, &Server{})
 }

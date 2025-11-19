@@ -117,7 +117,7 @@ func (conn MyConn) replConfConfirm() (err error) {
 }
 
 func (conn MyConn) replConfGetAct(server *Server) (err error) {
-	result := BuildRESPArray([]string{"REPLCONF", "ACK", strconv.Itoa(server.replicaConfig.byteProcessed)})
+	result := BuildPrimitiveRESPArray([]string{"REPLCONF", "ACK", strconv.Itoa(server.replicaConfig.byteProcessed)})
 	_, err = conn.Write([]byte(result))
 	return err
 }
@@ -194,7 +194,7 @@ func (conn MyConn) Xadd(args []string) (err error) {
 	} else {
 		isErr, errMsg := VerifyStreamIntegrity(lastEntryId, entryKey)
 		if isErr {
-			conn.Write([]byte(BuildSimpleError("ERR", errMsg)))
+			conn.Write([]byte(BuildSimpleErrorWithErrType("ERR", errMsg)))
 			return
 		}
 
@@ -246,10 +246,10 @@ func (conn MyConn) Config(args []string, server *Server) (err error) {
 	property := args[2]
 	if method == "GET" {
 		if property == "dir" {
-			conn.Write([]byte(BuildRESPArray([]string{"dir", server.dbConfig.dirName})))
+			conn.Write([]byte(BuildPrimitiveRESPArray([]string{"dir", server.dbConfig.dirName})))
 			return err
 		} else if property == "filename" {
-			conn.Write([]byte(BuildRESPArray([]string{"filename", server.dbConfig.dirName})))
+			conn.Write([]byte(BuildPrimitiveRESPArray([]string{"filename", server.dbConfig.dirName})))
 			return err
 		}
 	}
@@ -270,7 +270,7 @@ func (conn MyConn) Keys(args []string, server *Server) (err error) {
 		keys = append(keys, v.key)
 	}
 
-	conn.Write([]byte(BuildRESPArray(keys)))
+	conn.Write([]byte(BuildPrimitiveRESPArray(keys)))
 
 	return errors.New("Not supported")
 }
@@ -351,7 +351,7 @@ func TreeNodeToArray(entries []TreeNodeResult) string {
 	for _, v := range entries {
 		id := BuildBulkString(v.id)
 
-		data := BuildRESPArray(v.data)
+		data := BuildPrimitiveRESPArray(v.data)
 		resp := fmt.Sprintf("*%v%v%v%v", 2, CLRF, id, data)
 
 		result = append(result, resp)
@@ -376,7 +376,7 @@ func (conn MyConn) Wait(args []string, server *Server) (err error) {
 		return
 	}
 
-	getAckMsg := BuildRESPArray([]string{"REPLCONF", "GETACK", "*"})
+	getAckMsg := BuildPrimitiveRESPArray([]string{"REPLCONF", "GETACK", "*"})
 	getAckMsgLen := len(getAckMsg)
 	for _, v := range server.masterConfig.replicaConnections {
 		go func(v *ReplicaConn) {

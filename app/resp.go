@@ -60,11 +60,25 @@ func BuildRespInt(val int) string {
 	return fmt.Sprintf(":%v%v", val, CLRF)
 }
 
-func BuildSimpleError(errType string, message string) string {
+func BuildSimpleErrorWithErrType(errType string, message string) string {
 	return fmt.Sprintf("-%v %v%v", errType, message, CLRF)
 }
 
+func BuildSimpleError(message string) string {
+	return fmt.Sprintf("-%v%v", message, CLRF)
+}
+
 func BuildRESPArray(args []string) string {
+	resp := fmt.Sprintf("*%v%v", len(args), CLRF)
+
+	for _, arg := range args {
+		resp += fmt.Sprintf("%v", arg)
+	}
+
+	return resp
+}
+
+func BuildPrimitiveRESPArray(args []string) string {
 	resp := fmt.Sprintf("*%v%v", len(args), CLRF)
 
 	for _, arg := range args {

@@ -7,7 +7,7 @@ import (
 )
 
 func TestSingleCommand(t *testing.T) {
-	tmpString := BuildRESPArray([]string{"set", "abc", "def"})
+	tmpString := BuildPrimitiveRESPArray([]string{"set", "abc", "def"})
 
 	resp, _, _ := splitMultipleCommandString(tmpString)
 	commandOneArray := resp[0].data.([]string)
@@ -19,7 +19,7 @@ func TestSingleCommand(t *testing.T) {
 }
 
 func TestMultipleCommand(t *testing.T) {
-	tmpString := BuildSimpleString("ok") + BuildRESPArray([]string{"set", "abc", "def"})
+	tmpString := BuildSimpleString("ok") + BuildPrimitiveRESPArray([]string{"set", "abc", "def"})
 
 	resp, _, _ := splitMultipleCommandString(tmpString)
 

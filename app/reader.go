@@ -92,6 +92,18 @@ loop:
 	return res, tempInp, nil
 }
 
+// func tmpFunction() error {
+// 	lexer := NewLexar("")
+
+// 	resp := lexer.parse()
+
+// 	if resp.err.errorType == ParseErrorMissingChunk {
+// 		// wait for more data
+// 	} else {
+// 		return resp.err
+// 	}
+// }
+
 func handleInteger(input string) (endIndex int, command RESPRecord) {
 	index := strings.Index(input, CLRF)
 	// i dont like adding index == -1 in every handler
