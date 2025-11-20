@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"strconv"
-	"strings"
 )
 
 // switch indicator {
@@ -25,22 +24,30 @@ import (
 type TokenType string
 
 const (
-	numberToken       TokenType = "numberToken"
-	simpleStringToken TokenType = "simpleStringToken"
-	bulkStringToken   TokenType = "bulkStringToken"
-	simpleErrorToken  TokenType = "simpleErrorToken"
-	arrayToken        TokenType = "arrayToken"
-	CLRFToken         TokenType = "CLRFToken"
+	numberToken TokenType = "numberToken"
+	spaceToken  TokenType = "spaceToken"
+	eofToken    TokenType = "eofToken"
+	// simpleStringToken TokenType = "simpleStringToken"
+	// bulkStringToken   TokenType = "bulkStringToken"
+	// simpleErrorToken  TokenType = "simpleErrorToken"
+	// arrayToken        TokenType = "arrayToken"
+	plusToken   TokenType = "plusToken"
+	dollarToken TokenType = "dolarToken"
+	hyphenToken TokenType = "hyphenToken"
+	colonToken  TokenType = "colonToken"
+	stringToken TokenType = "stringToken"
+	starToken   TokenType = "starToken"
+	CLRFToken   TokenType = "CLRFToken"
 )
 
 type TokenVal interface{}
 
-type TokenValString string
-type TokenValArray []Token
-type TokenValError struct {
-	errorType string
-	errorMsg  string
-}
+// type TokenValString string
+// type TokenValArray []Token
+// type TokenValError struct {
+// 	errorType string
+// 	errorMsg  string
+// }
 
 type Token struct {
 	tokenType TokenType
@@ -133,7 +140,7 @@ func isNumeric(char byte) bool {
 }
 
 func (l *Lexar) getNumber() string {
-	char := l.next()
+	char := l.peek()
 	numberString := ""
 	for isNumeric(char) {
 		numberString += string(char)
@@ -143,37 +150,14 @@ func (l *Lexar) getNumber() string {
 	return numberString
 }
 
-func (l *Lexar) readNumberToken() Token {
-	numberString := l.getNumber()
-	return Token{tokenType: numberToken, val: numberString}
-}
-
-func (l *Lexar) readArrayToken() (Token, *ParseError) {
-	tokenValues := []Token{}
-	resp := Token{
-		tokenType: arrayToken,
-	}
-
+func (l *Lexar) readNumberToken() (Token, error) {
 	numberString := l.getNumber()
 	number, err := strconv.Atoi(numberString)
 
 	if err != nil {
-		return Token{}, NewInvalidDataError(fmt.Sprintf("error while reading array number: %v", err))
+		return Token{}, fmt.Errorf("error parsing value: %v to int", numberString)
 	}
-	l.expects(CLRF)
-
-	for i := 0; i < number; i++ {
-		tokens, err := l.parseRespData()
-		if err != nil {
-			return Token{}, err
-		}
-		tokenValues = append(tokenValues, tokens...)
-
-	}
-
-	resp.val = tokenValues
-
-	return resp, nil
+	return Token{tokenType: numberToken, val: number}, nil
 }
 
 func isAlpha(char byte) bool {
@@ -199,7 +183,7 @@ func isWordUpperCase(data string) bool {
 }
 
 func (l *Lexar) readAlphaNumerical() string {
-	char := l.next()
+	char := l.peek()
 	output := ""
 
 	for isAlphaNumerical(char) {
@@ -209,78 +193,107 @@ func (l *Lexar) readAlphaNumerical() string {
 	return output
 }
 
-func (l *Lexar) readSimpleStringToken() Token {
-	output := l.readAlphaNumerical()
-
-	return Token{tokenType: simpleStringToken, val: output}
+func (l *Lexar) parseDolarPattern() ([]Token, error) {
+	tokens := []Token{}
+	tokens = append(tokens, Token{tokenType: dollarToken})
+	l.next()
+	numberToken, err := l.readNumberToken()
+	if err != nil {
+		return nil, err
+	}
+	tokens = append(tokens, numberToken)
+	return tokens, nil
 }
 
-func (l *Lexar) readBulkStringToken() (Token, *ParseError) {
-	lengthString := l.getNumber()
+func (l *Lexar) parseStarPattern() ([]Token, error) {
+	tokens := []Token{}
+	tokens = append(tokens, Token{tokenType: starToken})
+	l.next()
+	numberToken, err := l.readNumberToken()
+	if err != nil {
+		return nil, err
+	}
+	tokens = append(tokens, numberToken)
+	return tokens, nil
+}
 
-	l.expects(CLRF)
+func (l *Lexar) parseCLRFPattern() ([]Token, error) {
+	tokens := []Token{}
+	l.next()
+	if l.eof() {
+		return tokens, nil
+	}
+	if l.peek() != '\n' {
+		return nil, fmt.Errorf("error while reading csrf, expected '\n' got: %v", l.peek())
+	}
 
-	length, err := strconv.Atoi(lengthString)
+	tokens = append(tokens, Token{tokenType: CLRFToken})
+	l.next()
+
+	return tokens, nil
+}
+
+func (l *Lexar) parseNumberPattern() ([]Token, error) {
+	tokens := []Token{}
+	tokens = append(tokens, Token{tokenType: colonToken})
+	l.next()
+	numberString := l.getNumber()
+
+	number, err := strconv.Atoi(numberString)
 
 	if err != nil {
-		return Token{}, NewInvalidDataError(fmt.Sprintf("parsing bulk string length error: %v", err))
+		return tokens, err
 	}
 
-	data := l.nexts(length)
+	tokens = append(tokens, Token{tokenType: numberToken, val: number})
 
-	return Token{tokenType: bulkStringToken, val: data}, nil
+	return tokens, nil
 }
 
-func (l *Lexar) readSimpleErrorToken() Token {
-	token := Token{
-		tokenType: simpleErrorToken,
-	}
-	tokenVal := TokenValError{}
-	errorMsg := []string{}
-	for l.peek() != '\r' {
-		output := l.readAlphaNumerical()
-		errorMsg = append(errorMsg, output)
-	}
-	if isWordUpperCase(errorMsg[0]) {
-		tokenVal.errorType = errorMsg[0]
-		errorMsg = errorMsg[1:]
-	}
-	tokenVal.errorMsg = strings.Join(errorMsg, " ")
-	token.val = tokenVal
-	return token
+func (l *Lexar) readStringLitteral() []Token {
+	literal := l.readAlphaNumerical()
+
+	return []Token{{tokenType: stringToken, val: literal}}
 }
 
-func (l *Lexar) parseRespData() ([]Token, *ParseError) {
+func (l *Lexar) parseRespData() ([]Token, error) {
 	tokens := []Token{}
 	char := l.peek()
-	var token Token
-	var err *ParseError
+	var currTokens []Token
+	var err error
 	switch char {
 	case ':':
-		token = l.readNumberToken()
+		currTokens, err = l.parseNumberPattern()
+	case ' ':
+		currTokens = []Token{{tokenType: spaceToken}}
+		l.next()
 	case '+':
-		token = l.readSimpleStringToken()
+		currTokens = []Token{{tokenType: plusToken}}
+		l.next()
+	case '\r':
+		currTokens, err = l.parseCLRFPattern()
 	case '$':
-		token, err = l.readBulkStringToken()
+		currTokens, err = l.parseDolarPattern()
 	case '*':
-		token, err = l.readArrayToken()
+		currTokens, err = l.parseStarPattern()
 	case '-':
-		token = l.readSimpleErrorToken()
+		currTokens = []Token{{tokenType: hyphenToken}}
+		l.next()
 	default:
-		return nil, NewInvalidDataError(fmt.Sprintf("Unrecoginized char: %v", char))
+		currTokens = l.readStringLitteral()
 	}
 	if err != nil {
 		return tokens, err
 	}
-	tokens = append(tokens, token)
+	tokens = append(tokens, currTokens...)
 
-	if token.tokenType != arrayToken {
-		err := l.expects(CLRF)
-		if err != nil {
-			return tokens, err
-		}
-		tokens = append(tokens, Token{tokenType: CLRFToken, val: ""})
-	}
+	// if token.tokenType != arrayToken {
+	// 	err := l.expects(CLRF)
+	// 	if err != nil {
+	// 		return tokens, err
+	// 	}
+	// 	tokens = append(tokens, Token{tokenType: CLRFToken, val: ""})
+	// }
 	// Reasons for errors:
 	// 1. invalid data
 	// Invalid data is when we have parsing error but we still have a bytes to read
@@ -290,20 +303,20 @@ func (l *Lexar) parseRespData() ([]Token, *ParseError) {
 	return tokens, nil
 }
 
-type ParseResult struct {
+type LexarResult struct {
 	Tokens       []Token
 	UnparsedData string
-	err          *ParseError
+	err          error
 }
 
-func (l *Lexar) parse() ParseResult {
+func (l *Lexar) parse() LexarResult {
 	resp := []Token{}
 	for !l.eof() {
 		currentIndex := l.index
 		tokens, err := l.parseRespData()
 
 		if err != nil {
-			return ParseResult{
+			return LexarResult{
 				Tokens:       tokens,
 				UnparsedData: l.input[currentIndex:],
 				err:          err,
@@ -314,7 +327,7 @@ func (l *Lexar) parse() ParseResult {
 
 	}
 
-	return ParseResult{
+	return LexarResult{
 		err:          nil,
 		UnparsedData: "",
 		Tokens:       resp,
@@ -324,6 +337,144 @@ func (l *Lexar) parse() ParseResult {
 func NewLexar(input string) *Lexar {
 	return &Lexar{
 		input: input,
+		index: 0,
+	}
+}
+
+type Parser struct {
+	tokens []Token
+	index  int
+}
+
+func (p *Parser) eof() bool {
+	return len(p.tokens) <= p.index
+}
+func (p *Parser) peek() Token {
+	if p.eof() {
+		return Token{tokenType: eofToken, val: ""}
+	}
+	return p.tokens[p.index]
+}
+
+func (p *Parser) next() Token {
+	p.index++
+
+	return p.peek()
+}
+
+func (p *Parser) skipWhiteSpaces() {
+	for p.peek().tokenType == CLRFToken {
+		p.next()
+	}
+}
+
+func (p *Parser) expect(tokenType TokenType) *ParseError {
+	if p.eof() {
+		return NewMissingChunkError(fmt.Sprintf("data ended when looking for %v", tokenType))
+	}
+	for p.peek().tokenType != tokenType {
+		return NewInvalidDataError(fmt.Sprintf("expected token type: %v, got: %v", tokenType, p.peek().tokenType))
+	}
+
+	return nil
+}
+
+type ParseResult struct {
+	err          *ParseError
+	unparsedData string
+	AST          []ASTNode
+}
+
+type ASTNode interface{}
+type ASTNumber struct {
+	val int
+}
+type ASTSimpleString struct {
+	val string
+}
+type ASTBulkString struct {
+	val string
+}
+type ASTSimpleError struct {
+	errType string
+	msg     string
+}
+type ASTArray struct {
+	values []ASTNode
+}
+
+// const (
+//
+//	numberToken       TokenType = "numberToken"
+//	eofToken          TokenType = "eofToken"
+//	simpleStringToken TokenType = "simpleStringToken"
+//	bulkStringToken   TokenType = "bulkStringToken"
+//	simpleErrorToken  TokenType = "simpleErrorToken"
+//	arrayToken        TokenType = "arrayToken"
+//	CLRFToken         TokenType = "CLRFToken"
+//
+// )
+func (p *Parser) parse(input string) ParseResult {
+	lexar := NewLexar(input)
+	result := lexar.parse()
+	if result.err != nil {
+		//inavalid data
+		return ParseResult{
+			err: NewInvalidDataError(result.err.Error()),
+		}
+	}
+	p.tokens = result.Tokens
+
+	ASTNodes := []ASTNode{}
+	token := p.peek()
+
+	for token.tokenType != eofToken {
+
+		astNode := p.tokenTypeToAst(token)
+		ASTNodes = append(ASTNodes, astNode)
+		p.next()
+		p.skipWhiteSpaces()
+		token = p.peek()
+
+	}
+
+	return ParseResult{
+		err:          nil,
+		unparsedData: "",
+		AST:          ASTNodes,
+	}
+}
+
+func (p *Parser) parseInteger() (ASTNode, *ParseError) {
+	next := p.next()
+	err := p.expect(numberToken)
+	if err != nil {
+		return nil, err
+	}
+
+	err = p.expect(CLRFToken)
+	if err != nil {
+		return nil, err
+	}
+
+	return ASTNumber{val: next.val.(int)}, nil
+}
+
+func (p *Parser) tokenTypeToAst(token Token) ASTNode {
+	var ast ASTNode
+
+	switch token.tokenType {
+	case colonToken:
+		ast = ASTNumber{val: token.val.(int)}
+
+	default:
+		panic(fmt.Sprintf("Not supported token type: %v", token.tokenType))
+	}
+	return ast
+}
+
+func NewParser() *Parser {
+	return &Parser{
 		index: 0,
 	}
 }
