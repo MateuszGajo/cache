@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 // switch indicator {
@@ -31,13 +32,13 @@ const (
 	// bulkStringToken   TokenType = "bulkStringToken"
 	// simpleErrorToken  TokenType = "simpleErrorToken"
 	// arrayToken        TokenType = "arrayToken"
-	plusToken   TokenType = "plusToken"
-	dollarToken TokenType = "dolarToken"
-	hyphenToken TokenType = "hyphenToken"
-	colonToken  TokenType = "colonToken"
-	stringToken TokenType = "stringToken"
-	starToken   TokenType = "starToken"
-	CLRFToken   TokenType = "CLRFToken"
+	plusToken    TokenType = "plusToken"
+	dollarToken  TokenType = "dolarToken"
+	hyphenToken  TokenType = "hyphenToken"
+	colonToken   TokenType = "colonToken"
+	literalToken TokenType = "literalToken"
+	starToken    TokenType = "starToken"
+	CLRFToken    TokenType = "CLRFToken"
 )
 
 type TokenVal interface{}
@@ -253,7 +254,7 @@ func (l *Lexar) parseNumberPattern() ([]Token, error) {
 func (l *Lexar) readStringLitteral() []Token {
 	literal := l.readAlphaNumerical()
 
-	return []Token{{tokenType: stringToken, val: literal}}
+	return []Token{{tokenType: literalToken, val: literal}}
 }
 
 func (l *Lexar) parseRespData() ([]Token, error) {
@@ -265,7 +266,7 @@ func (l *Lexar) parseRespData() ([]Token, error) {
 	case ':':
 		currTokens, err = l.parseNumberPattern()
 	case ' ':
-		currTokens = []Token{{tokenType: spaceToken}}
+		currTokens = []Token{{tokenType: spaceToken, val: " "}}
 		l.next()
 	case '+':
 		currTokens = []Token{{tokenType: plusToken}}
@@ -286,19 +287,6 @@ func (l *Lexar) parseRespData() ([]Token, error) {
 		return tokens, err
 	}
 	tokens = append(tokens, currTokens...)
-
-	// if token.tokenType != arrayToken {
-	// 	err := l.expects(CLRF)
-	// 	if err != nil {
-	// 		return tokens, err
-	// 	}
-	// 	tokens = append(tokens, Token{tokenType: CLRFToken, val: ""})
-	// }
-	// Reasons for errors:
-	// 1. invalid data
-	// Invalid data is when we have parsing error but we still have a bytes to read
-	// 2. missing chunk of data
-	// Missing data is when we are at the end of the string and parsers requires more step
 
 	return tokens, nil
 }
@@ -342,8 +330,9 @@ func NewLexar(input string) *Lexar {
 }
 
 type Parser struct {
-	tokens []Token
-	index  int
+	tokens           []Token
+	unconsumedTokens []Token
+	index            int
 }
 
 func (p *Parser) eof() bool {
@@ -380,9 +369,8 @@ func (p *Parser) expect(tokenType TokenType) *ParseError {
 }
 
 type ParseResult struct {
-	err          *ParseError
-	unparsedData string
-	AST          []ASTNode
+	err *ParseError
+	AST []ASTNode
 }
 
 type ASTNode interface{}
@@ -403,17 +391,6 @@ type ASTArray struct {
 	values []ASTNode
 }
 
-// const (
-//
-//	numberToken       TokenType = "numberToken"
-//	eofToken          TokenType = "eofToken"
-//	simpleStringToken TokenType = "simpleStringToken"
-//	bulkStringToken   TokenType = "bulkStringToken"
-//	simpleErrorToken  TokenType = "simpleErrorToken"
-//	arrayToken        TokenType = "arrayToken"
-//	CLRFToken         TokenType = "CLRFToken"
-//
-// )
 func (p *Parser) parse(input string) ParseResult {
 	lexar := NewLexar(input)
 	result := lexar.parse()
@@ -423,14 +400,32 @@ func (p *Parser) parse(input string) ParseResult {
 			err: NewInvalidDataError(result.err.Error()),
 		}
 	}
-	p.tokens = result.Tokens
+	p.tokens = p.unconsumedTokens
+	p.unconsumedTokens = []Token{}
+	p.tokens = append(p.tokens, result.Tokens...)
 
 	ASTNodes := []ASTNode{}
 	token := p.peek()
 
 	for token.tokenType != eofToken {
 
-		astNode := p.tokenTypeToAst(token)
+		astNode, err := p.tokenTypeToAst(token)
+
+		if err != nil {
+			if err.errorType == ParseErrorInvalidData {
+				return ParseResult{
+					err: err,
+					AST: ASTNodes,
+				}
+			} else if err.errorType == ParseErrorMissingChunk {
+				p.unconsumedTokens = p.tokens[p.index:]
+				return ParseResult{
+					err: nil,
+					AST: ASTNodes,
+				}
+			}
+		}
+
 		ASTNodes = append(ASTNodes, astNode)
 		p.next()
 		p.skipWhiteSpaces()
@@ -439,38 +434,125 @@ func (p *Parser) parse(input string) ParseResult {
 	}
 
 	return ParseResult{
-		err:          nil,
-		unparsedData: "",
-		AST:          ASTNodes,
+		err: nil,
+		AST: ASTNodes,
 	}
 }
 
 func (p *Parser) parseInteger() (ASTNode, *ParseError) {
-	next := p.next()
+	numberTok := p.next()
 	err := p.expect(numberToken)
 	if err != nil {
 		return nil, err
 	}
+	p.next()
 
 	err = p.expect(CLRFToken)
 	if err != nil {
 		return nil, err
 	}
 
-	return ASTNumber{val: next.val.(int)}, nil
+	return ASTNumber{val: numberTok.val.(int)}, nil
 }
 
-func (p *Parser) tokenTypeToAst(token Token) ASTNode {
+func (p *Parser) parseSimpleString() (ASTNode, *ParseError) {
+	msgToken := p.next()
+	err := p.expect(literalToken)
+	if err != nil {
+		return nil, err
+	}
+
+	p.next()
+	err = p.expect(CLRFToken)
+	if err != nil {
+		return nil, err
+	}
+
+	return ASTSimpleString{val: msgToken.val.(string)}, nil
+}
+
+func (p *Parser) parseSimpleError() (ASTNode, *ParseError) {
+	literals := []string{}
+
+	for {
+		token := p.next()
+		err := p.expect(literalToken)
+		if err != nil {
+			return nil, err
+		}
+		literals = append(literals, token.val.(string))
+		token = p.next()
+
+		if token.tokenType != spaceToken {
+			break
+		}
+	}
+
+	err := p.expect(CLRFToken)
+	if err != nil {
+		return nil, err
+	}
+	errorType := ""
+
+	if isWordUpperCase(literals[0]) {
+		errorType = literals[0]
+		literals = literals[1:]
+	}
+
+	return ASTSimpleError{errType: errorType, msg: strings.Join(literals, " ")}, nil
+}
+
+func (p *Parser) parseBulkString() (ASTNode, *ParseError) {
+	lengthToken := p.next()
+	if err := p.expect(numberToken); err != nil {
+		return nil, err
+	}
+
+	p.next()
+	p.expect(CLRFToken)
+
+	data := ""
+	for {
+		token := p.next()
+		p.expect(literalToken)
+		data += token.val.(string)
+
+		token = p.next()
+		if token.tokenType != spaceToken {
+			break
+		}
+		data += token.val.(string)
+	}
+
+	if len(data) != lengthToken.val.(int) {
+		return nil, NewInvalidDataError(fmt.Sprintf("ParseBulkString error, length mismatch declared: %v got: %v bytes", len(data), lengthToken.val))
+	}
+
+	p.expect(CLRFToken)
+
+	return ASTBulkString{val: data}, nil
+}
+
+// declare function to write an array
+// read number of elements (token number), then lets iterate over in every itteration we call tokenTypeTOAST
+
+func (p *Parser) tokenTypeToAst(token Token) (ASTNode, *ParseError) {
 	var ast ASTNode
+	var err *ParseError
 
 	switch token.tokenType {
 	case colonToken:
-		ast = ASTNumber{val: token.val.(int)}
-
+		ast, err = p.parseInteger()
+	case plusToken:
+		ast, err = p.parseSimpleString()
+	case hyphenToken:
+		ast, err = p.parseSimpleError()
+	case dollarToken:
+		ast, err = p.parseBulkString()
 	default:
 		panic(fmt.Sprintf("Not supported token type: %v", token.tokenType))
 	}
-	return ast
+	return ast, err
 }
 
 func NewParser() *Parser {
