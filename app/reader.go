@@ -8,6 +8,7 @@ import (
 	"strings"
 )
 
+// this RESPDATA, RESPIntData are going to be removed
 type RESPData interface{}
 
 type RESPIntData int
@@ -23,6 +24,45 @@ var tempRead string = ""
 type RESPParsed struct {
 	records []RESPRecord
 	raw     string
+}
+
+type RESPParsedNew struct {
+	nodes []ASTNode
+	raw   string
+}
+
+// would be good to create a struct reader and incilized with parser
+
+func readInputNew(conn net.Conn) (RESPParsedNew, error) {
+	buf := make([]byte, 1024)
+	n, err := conn.Read(buf)
+	if err != nil {
+		return RESPParsedNew{}, err
+	}
+
+	nodes := []ASTNode{}
+	input := string(buf[:n])
+
+	if len(input) == 0 {
+		return RESPParsedNew{
+			nodes: nodes,
+			raw:   input,
+		}, nil
+	}
+
+	parser := NewParser()
+
+	parsed := parser.parseStream(input)
+
+	if parsed.err != nil {
+		return RESPParsedNew{}, parsed.err
+	}
+
+	return RESPParsedNew{
+		nodes: parsed.AST,
+		raw:   input,
+	}, nil
+
 }
 
 func readInput(conn net.Conn) (RESPParsed, error) {
@@ -91,18 +131,6 @@ loop:
 
 	return res, tempInp, nil
 }
-
-// func tmpFunction() error {
-// 	lexer := NewLexar("")
-
-// 	resp := lexer.parse()
-
-// 	if resp.err.errorType == ParseErrorMissingChunk {
-// 		// wait for more data
-// 	} else {
-// 		return resp.err
-// 	}
-// }
 
 func handleInteger(input string) (endIndex int, command RESPRecord) {
 	index := strings.Index(input, CLRF)

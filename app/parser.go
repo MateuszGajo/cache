@@ -369,7 +369,7 @@ func (p *Parser) expect(tokenType TokenType) *ParseError {
 }
 
 type ParseResult struct {
-	err *ParseError
+	err error
 	AST []ASTNode
 }
 
@@ -391,7 +391,7 @@ type ASTArray struct {
 	values []ASTNode
 }
 
-func (p *Parser) parse(input string) ParseResult {
+func (p *Parser) parseStream(input string) ParseResult {
 	lexar := NewLexar(input)
 	result := lexar.parse()
 	if result.err != nil {
@@ -409,7 +409,7 @@ func (p *Parser) parse(input string) ParseResult {
 
 	for token.tokenType != eofToken {
 
-		astNode, err := p.tokenTypeToAst(token)
+		astNode, err := p.parseRESPValue()
 
 		if err != nil {
 			if err.errorType == ParseErrorInvalidData {
@@ -533,14 +533,72 @@ func (p *Parser) parseBulkString() (ASTNode, *ParseError) {
 	return ASTBulkString{val: data}, nil
 }
 
-// declare function to write an array
-// read number of elements (token number), then lets iterate over in every itteration we call tokenTypeTOAST
+// Grammar (BNF Notation)
+//
+// Notes:
+// - ()* means "zero or more occurrences"
+// - | means "or" (alternative)
+// - ε (epsilon) means "empty string" (matches nothing)
+// - Terminals are tokens from the lexer (colonToken, literalToken, etc.)
+// - Non-terminals are production rules (Integer, SimpleString, etc.)
+//
+// Syntactic Grammar (Parser Level):
+// RESPValue    -> Integer | SimpleString | SimpleError | BulkString | ε
+// Integer      -> colonToken numberToken CLRFToken
+// SimpleString -> plusToken literalToken CLRFToken
+// SimpleError  -> hyphenToken LiteralSeq CLRFToken
+// BulkString   -> dollarToken numberToken CLRFToken LiteralSeq CLRFToken
+// Array 	    -> starToken numberToken CLRF RESPValue
+//
+// LiteralSeq   -> literalToken (spaceToken literalToken)*
+//
+// ---------------------------------------------------------------
+// Lexical Grammar (Lexer/Tokenizer Level - for reference only):
+// literalToken -> alphaChar+ | digitChar+
+// numberToken  -> digitChar+
+// alphaChar    -> 'a'..'z' | 'A'..'Z'
+// digitChar    -> '0'..'9'
 
-func (p *Parser) tokenTypeToAst(token Token) (ASTNode, *ParseError) {
+func (p *Parser) praseArray() (ASTNode, *ParseError) {
+	length := p.next()
+	err := p.expect(numberToken)
+
+	if err != nil {
+		return nil, err
+	}
+
+	p.next()
+	err = p.expect(CLRFToken)
+	if err != nil {
+		return nil, err
+	}
+	p.next()
+
+	lengthNumber, ok := length.val.(int)
+	fmt.Println(lengthNumber)
+	if !ok {
+		return nil, NewInvalidDataError("parseArray, couldn't parse length token val to number")
+	}
+
+	arrayAST := []ASTNode{}
+
+	for i := 0; i < lengthNumber; i++ {
+		ast, err := p.parseRESPValue()
+		if err != nil {
+			return nil, err
+		}
+		arrayAST = append(arrayAST, ast)
+		p.next()
+	}
+
+	return ASTArray{values: arrayAST}, nil
+}
+
+func (p *Parser) parseRESPValue() (ASTNode, *ParseError) {
 	var ast ASTNode
 	var err *ParseError
 
-	switch token.tokenType {
+	switch p.peek().tokenType {
 	case colonToken:
 		ast, err = p.parseInteger()
 	case plusToken:
@@ -549,8 +607,10 @@ func (p *Parser) tokenTypeToAst(token Token) (ASTNode, *ParseError) {
 		ast, err = p.parseSimpleError()
 	case dollarToken:
 		ast, err = p.parseBulkString()
+	case starToken:
+		ast, err = p.praseArray()
 	default:
-		panic(fmt.Sprintf("Not supported token type: %v", token.tokenType))
+		panic(fmt.Sprintf("Not supported token type: %v", p.peek().tokenType))
 	}
 	return ast, err
 }

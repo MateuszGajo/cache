@@ -61,7 +61,7 @@ func BuildRespInt(val int) string {
 }
 
 func BuildSimpleErrorWithErrType(errType string, message string) string {
-	return fmt.Sprintf("-%v %v%v", errType, message, CLRF)
+	return fmt.Sprintf("-%v %v%v", strings.ToUpper(errType), message, CLRF)
 }
 
 func BuildSimpleError(message string) string {

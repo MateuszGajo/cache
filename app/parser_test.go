@@ -203,12 +203,12 @@ func TestParseTokenizeSimpleError(t *testing.T) {
 			expectedTokens: []Token{
 				{tokenType: hyphenToken},
 				{tokenType: literalToken, val: "TYPE"},
-				{tokenType: spaceToken},
+				{tokenType: spaceToken, val: " "},
 				{tokenType: literalToken, val: "Error"},
 				{tokenType: CLRFToken},
 				{tokenType: hyphenToken},
 				{tokenType: literalToken, val: "Another"},
-				{tokenType: spaceToken},
+				{tokenType: spaceToken, val: " "},
 				{tokenType: literalToken, val: "one"},
 				{tokenType: CLRFToken},
 			},
@@ -274,12 +274,48 @@ func TestParser(t *testing.T) {
 				AST: []ASTNode{ASTBulkString{val: "bulk string"}},
 			},
 		},
+
+		{
+			input: BuildRESPArray([]string{BuildBulkString("bulk string")}),
+			expectedResult: ParseResult{
+				AST: []ASTNode{
+					ASTArray{values: []ASTNode{
+						ASTBulkString{val: "bulk string"},
+					}},
+				},
+			},
+		},
+		{
+			input: BuildRESPArray([]string{BuildBulkString("bulk string"), BuildSimpleString("OK")}),
+			expectedResult: ParseResult{
+				AST: []ASTNode{
+					ASTArray{values: []ASTNode{
+						ASTBulkString{val: "bulk string"}, ASTSimpleString{val: "OK"},
+					}},
+				},
+			},
+		},
+		{
+			input: BuildRESPArray([]string{BuildBulkString("bulk string"), BuildSimpleString("OK"), BuildRESPArray([]string{BuildSimpleErrorWithErrType("ERRTYPE", "message")})}),
+			expectedResult: ParseResult{
+				AST: []ASTNode{
+					ASTArray{values: []ASTNode{
+						ASTBulkString{val: "bulk string"},
+						ASTSimpleString{val: "OK"},
+						ASTArray{values: []ASTNode{
+							ASTSimpleError{errType: "ERRTYPE", msg: "message"}},
+						},
+					},
+					},
+				},
+			},
+		},
 	}
 
 	for _, testCase := range testCases {
 		t.Run(fmt.Sprintf("Parse simple error, input: %v", testCase.input), func(t *testing.T) {
 			parser := NewParser()
-			result := parser.parse(testCase.input)
+			result := parser.parseStream(testCase.input)
 
 			if result.err != nil {
 				t.Error(result.err)
