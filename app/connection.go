@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"math/rand/v2"
 	"net"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 )
@@ -31,13 +33,13 @@ const (
 	KEYS       Commands = "KEYS"
 )
 
-func propagte(command RESPRecord, server *Server) {
+func propagte(rawInput string, server *Server) {
 	for _, v := range server.masterConfig.replicaConnections {
-		v.bytesWrite += command.length
+		v.bytesWrite += len(rawInput)
 	}
 
 	for _, v := range server.masterConfig.replicaConnections {
-		_, err := v.Write([]byte(command.raw))
+		_, err := v.Write([]byte(rawInput))
 
 		if err != nil {
 			fmt.Print("write error")
@@ -53,34 +55,62 @@ func handleConenction(conn MyConn, server *Server) {
 	}(conn)
 
 	for {
-		comamndInput, err := readInput(conn)
+		respParsed, err := readInputNew(conn)
 
 		if err != nil {
 			fmt.Println("Error while reaidng", err)
 			break
 		}
+	mainLoop:
+		for _, respItem := range respParsed {
+			// One array basically means one sets of command send, but we packets can be merge diffrently, so can be more than one array
+			astArray, ok := respItem.astNode.(ASTArray)
+			if !ok {
+				log.Fatalf("error handling command, expected to get comamnd as ast array, got: %v", reflect.TypeOf(astArray))
+				break
+			}
+			args := []string{}
 
-		for _, v := range comamndInput.records {
-			err = executeCommand(v, comamndInput.raw, conn, server)
+			for _, arrayItem := range astArray.values {
+				bulkNode, ok := arrayItem.(ASTBulkString)
+
+				if !ok {
+					log.Fatalf("all command in resp array should be bulk string, got: %v", reflect.TypeOf(bulkNode))
+					break mainLoop
+				}
+				args = append(args, bulkNode.val)
+			}
+
+			if len(args) == 0 {
+				log.Fatal("No argument passed")
+				break
+			}
+
+			command := Commands(strings.ToUpper(args[0]))
+
+			err := executeCommand(command, args[1:], conn, server)
 
 			if err != nil {
-				fmt.Println("Error while reaidng", err)
+				log.Fatal(err)
 				break
+			}
+
+			whiteReplCommands := map[Commands]bool{SET: true}
+			handshakeSyncCommands := map[Commands]bool{RDBFILE: true, FULLRESYNC: true}
+
+			if whiteReplCommands[command] && len(server.masterConfig.replicaConnections) > 0 {
+				propagte(respItem.rawInput, server)
+			}
+
+			if !handshakeSyncCommands[command] {
+				server.replicaConfig.byteProcessed += len(respItem.rawInput)
 			}
 		}
 
 	}
 }
 
-func executeCommand(commandDetails RESPRecord, bytes string, conn MyConn, server *Server) (err error) {
-	args := commandDetails.data.([]string)
-
-	if len(args) == 0 {
-		fmt.Println("No argument passed")
-		return err
-	}
-
-	command := Commands(strings.ToUpper(args[0]))
+func executeCommand(command Commands, args []string, conn MyConn, server *Server) (err error) {
 
 	switch command {
 	case PING:
@@ -128,16 +158,6 @@ func executeCommand(commandDetails RESPRecord, bytes string, conn MyConn, server
 			fmt.Println("invalid command received:", command)
 			conn.Write([]byte("-ERR unknown command\r\n"))
 		}
-	}
-	whiteReplCommands := map[Commands]bool{SET: true}
-	handshakeSyncCommands := map[Commands]bool{RDBFILE: true, FULLRESYNC: true}
-
-	if whiteReplCommands[command] && len(server.masterConfig.replicaConnections) > 0 {
-		propagte(commandDetails, server)
-	}
-
-	if !handshakeSyncCommands[command] {
-		server.replicaConfig.byteProcessed += commandDetails.length
 	}
 
 	if err != nil {

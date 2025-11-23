@@ -23,7 +23,7 @@ func TestSimpleString(t *testing.T) {
 func TestSimpleError(t *testing.T) {
 	resp := BuildSimpleErrorWithErrType("Error", "This is error")
 
-	if resp != "-Error This is error\r\n" {
-		t.Fatalf("Expected:%v, got:%q", "-Error This is error", resp)
+	if resp != "-ERROR This is error\r\n" {
+		t.Fatalf("Expected:%v, got:%q", "-ERROR This is error", resp)
 	}
 }

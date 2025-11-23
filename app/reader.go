@@ -26,28 +26,19 @@ type RESPParsed struct {
 	raw     string
 }
 
-type RESPParsedNew struct {
-	nodes []ASTNode
-	raw   string
-}
-
 // would be good to create a struct reader and incilized with parser
 
-func readInputNew(conn net.Conn) (RESPParsedNew, error) {
+func readInputNew(conn net.Conn) ([]ParseResultRecord, error) {
 	buf := make([]byte, 1024)
 	n, err := conn.Read(buf)
 	if err != nil {
-		return RESPParsedNew{}, err
+		return nil, err
 	}
 
-	nodes := []ASTNode{}
 	input := string(buf[:n])
 
 	if len(input) == 0 {
-		return RESPParsedNew{
-			nodes: nodes,
-			raw:   input,
-		}, nil
+		return nil, nil
 	}
 
 	parser := NewParser()
@@ -55,13 +46,10 @@ func readInputNew(conn net.Conn) (RESPParsedNew, error) {
 	parsed := parser.parseStream(input)
 
 	if parsed.err != nil {
-		return RESPParsedNew{}, parsed.err
+		return nil, parsed.err
 	}
 
-	return RESPParsedNew{
-		nodes: parsed.AST,
-		raw:   input,
-	}, nil
+	return parsed.records, nil
 
 }
 
