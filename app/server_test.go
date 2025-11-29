@@ -12,7 +12,8 @@ import (
 )
 
 func readSingleLineResponse(conn net.Conn, t *testing.T) ASTNode {
-	RESPParsed, err := readInputNew(conn)
+	reader := NewReader(conn)
+	RESPParsed, err := reader.readInput()
 
 	if err != nil {
 		t.Error(err)
@@ -42,6 +43,7 @@ func startServer() (*Server, net.Conn) {
 
 func cleanup(server *Server, conn net.Conn) {
 	m = map[string]CustomSetStore{}
+	linkedList = map[string]*LinkedList{}
 	conn.Close()
 	server.Close()
 }
@@ -55,10 +57,11 @@ func write(conn net.Conn, data []byte) {
 }
 
 func writeMany(conn net.Conn, data [][]byte) {
+	reader := NewReader(conn)
 	for _, item := range data {
 		write(conn, item)
 
-		_, err := readInput(conn)
+		_, err := reader.readInput()
 		if err != nil {
 			panic(err)
 		}
@@ -350,17 +353,173 @@ func TestReadingStreamAllSequence(t *testing.T) {
 
 // }
 
-func TestRPush(t *testing.T) {
+type SimpleASTTestCase struct {
+	input  string
+	output ASTNode
+}
+
+func (testCase SimpleASTTestCase) runTest(conn net.Conn, t *testing.T) {
+	t.Run(fmt.Sprintf("Test RPUSH, for input: %v", testCase.input), func(t *testing.T) {
+		write(conn, []byte(testCase.input))
+		node := readSingleLineResponse(conn, t)
+		if !reflect.DeepEqual(node, testCase.output) {
+			t.Errorf("expected node to be: %q, got: %q", testCase.output, node)
+		}
+	})
+}
+
+func TestRPUSH(t *testing.T) {
 	server, conn := startServer()
 
-	write(conn, []byte(BuildPrimitiveRESPArray([]string{"rpush", "newList", "aa"})))
-	node := readSingleLineResponse(conn, t)
-	data := node.(ASTNumber).val
+	testCaeses := []SimpleASTTestCase{
+		{
+			input:  BuildPrimitiveRESPArray([]string{"rpush", "list01", "item1"}),
+			output: ASTNumber{val: 1},
+		},
+		{
+			input:  BuildPrimitiveRESPArray([]string{"rpush", "list01", "item2"}),
+			output: ASTNumber{val: 2},
+		},
+		{
+			input:  BuildPrimitiveRESPArray([]string{"rpush", "list01", "item3"}),
+			output: ASTNumber{val: 3},
+		},
+		{
+			input:  BuildPrimitiveRESPArray([]string{"rpush", "list02", "item1", "item2", "item3", "item4", "item5"}),
+			output: ASTNumber{val: 5},
+		},
+	}
 
-	if data != 1 {
-		t.Errorf("Expected data to be 1, got :%v", data)
+	for _, testCase := range testCaeses {
+		testCase.runTest(conn, t)
 	}
 
 	cleanup(server, conn)
+}
 
+func TestLrange(t *testing.T) {
+	server, conn := startServer()
+	streams := [][]byte{
+		[]byte(BuildPrimitiveRESPArray([]string{"rpush", "list02", "item1", "item2", "item3", "item4", "item5"})),
+	}
+	writeMany(conn, streams)
+	testCaeses := []SimpleASTTestCase{
+		{
+			input:  BuildPrimitiveRESPArray([]string{"lrange", "emptyList", "0", "2"}),
+			output: ASTArray{values: []ASTNode{}},
+		},
+		{
+			input:  BuildPrimitiveRESPArray([]string{"lrange", "list02", "2", "1"}),
+			output: ASTArray{values: []ASTNode{}},
+		},
+		{
+			input: BuildPrimitiveRESPArray([]string{"lrange", "list02", "0", "2"}),
+			output: ASTArray{values: []ASTNode{
+				ASTBulkString{val: "item1"},
+				ASTBulkString{val: "item2"},
+				ASTBulkString{val: "item3"},
+			}},
+		},
+		{
+			input: BuildPrimitiveRESPArray([]string{"lrange", "list02", "0", "10"}),
+			output: ASTArray{values: []ASTNode{
+				ASTBulkString{val: "item1"},
+				ASTBulkString{val: "item2"},
+				ASTBulkString{val: "item3"},
+				ASTBulkString{val: "item4"},
+				ASTBulkString{val: "item5"},
+			}},
+		},
+		{
+			input: BuildPrimitiveRESPArray([]string{"lrange", "list02", "-2", "-1"}),
+			output: ASTArray{values: []ASTNode{
+				ASTBulkString{val: "item4"},
+				ASTBulkString{val: "item5"},
+			}},
+		},
+
+		{
+			input: BuildPrimitiveRESPArray([]string{"lrange", "list02", "0", "-3"}),
+			output: ASTArray{values: []ASTNode{
+				ASTBulkString{val: "item1"},
+				ASTBulkString{val: "item2"},
+				ASTBulkString{val: "item3"},
+			}},
+		},
+
+		{
+			input:  BuildPrimitiveRESPArray([]string{"lrange", "list02", "-6", "-8"}),
+			output: ASTArray{values: []ASTNode{}},
+		},
+	}
+
+	for _, testCase := range testCaeses {
+		testCase.runTest(conn, t)
+	}
+
+	cleanup(server, conn)
+}
+
+func TestLPUSH(t *testing.T) {
+	server, conn := startServer()
+
+	testCaeses := []SimpleASTTestCase{
+		{
+			input:  BuildPrimitiveRESPArray([]string{"lpush", "list01", "item1"}),
+			output: ASTNumber{val: 1},
+		},
+		{
+			input:  BuildPrimitiveRESPArray([]string{"lpush", "list01", "item2"}),
+			output: ASTNumber{val: 2},
+		},
+		{
+			input:  BuildPrimitiveRESPArray([]string{"lpush", "list02", "item1", "item2", "item3", "item4", "item5"}),
+			output: ASTNumber{val: 5},
+		},
+		{
+			input: BuildPrimitiveRESPArray([]string{"lrange", "list01", "0", "2"}),
+			output: ASTArray{values: []ASTNode{
+				ASTBulkString{val: "item2"},
+				ASTBulkString{val: "item1"},
+			}},
+		},
+		{
+			input: BuildPrimitiveRESPArray([]string{"lrange", "list02", "0", "2"}),
+			output: ASTArray{values: []ASTNode{
+				ASTBulkString{val: "item5"},
+				ASTBulkString{val: "item4"},
+				ASTBulkString{val: "item3"},
+			}},
+		},
+	}
+
+	for _, testCase := range testCaeses {
+		testCase.runTest(conn, t)
+	}
+
+	cleanup(server, conn)
+}
+
+func TestLlen(t *testing.T) {
+	server, conn := startServer()
+	streams := [][]byte{
+		[]byte(BuildPrimitiveRESPArray([]string{"rpush", "list02", "item1", "item2", "item3", "item4", "item5"})),
+	}
+	writeMany(conn, streams)
+	testCaeses := []SimpleASTTestCase{
+		{
+			input:  BuildPrimitiveRESPArray([]string{"llen", "emptyList"}),
+			output: ASTNumber{val: 0},
+		},
+		{
+			input:  BuildPrimitiveRESPArray([]string{"llen", "list02"}),
+			output: ASTNumber{val: 5},
+		},
+	}
+
+	for _, testCase := range testCaeses {
+		testCase.runTest(conn, t)
+	}
+
+	cleanup(server, conn)
 }

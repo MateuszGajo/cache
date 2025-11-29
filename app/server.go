@@ -102,6 +102,7 @@ func NewServer(options ...ServerOptions) *Server {
 		option(server)
 	}
 
+	// TODO: it needs to be moved,
 	if server.role == "slave" {
 		handShake(server)
 	}
@@ -131,7 +132,6 @@ func (server *Server) serve() {
 	defer server.wg.Done()
 	for {
 		conn, err := server.listener.Accept()
-
 		if err != nil {
 			select {
 			case <-server.quit:
@@ -146,7 +146,9 @@ func (server *Server) serve() {
 				for id != "" && server.masterConfig.replicaConnections[id] != nil {
 					id = strconv.Itoa(rand.IntN(100))
 				}
-				handleConenction(MyConn{Conn: conn, ignoreWrites: false, ID: strconv.Itoa(rand.IntN(100))}, server)
+				handleConenction(
+					MyConn{Conn: conn, ignoreWrites: false, ID: strconv.Itoa(rand.IntN(100))}, server,
+				)
 				server.wg.Done()
 			}()
 		}

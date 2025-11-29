@@ -26,6 +26,9 @@ const (
 	WAIT       Commands = "WAIT"
 	TYPE       Commands = "TYPE"
 	RPUSH      Commands = "RPUSH"
+	LPUSH      Commands = "LPUSH"
+	LLEN       Commands = "LLEN"
+	LRANGE     Commands = "LRANGE"
 	XADD       Commands = "XADD"
 	XRANGE     Commands = "XRANGE"
 	XREAD      Commands = "XREAD"
@@ -54,8 +57,10 @@ func handleConenction(conn MyConn, server *Server) {
 		conn.Close()
 	}(conn)
 
+	reader := NewReader(conn)
+
 	for {
-		respParsed, err := readInputNew(conn)
+		respParsed, err := reader.readInput()
 
 		if err != nil {
 			fmt.Println("Error while reaidng", err)
@@ -128,7 +133,13 @@ func executeCommand(command Commands, args []string, conn MyConn, server *Server
 	case TYPE:
 		err = conn.Type(args)
 	case RPUSH:
-		err = conn.RPush(args, server)
+		err = conn.rpush(args)
+	case LPUSH:
+		err = conn.lpush(args)
+	case LLEN:
+		err = conn.llen(args)
+	case LRANGE:
+		err = conn.lrange(args)
 	case XADD:
 		err = conn.Xadd(args)
 	case XRANGE:
@@ -168,10 +179,12 @@ func executeCommand(command Commands, args []string, conn MyConn, server *Server
 	return err
 }
 
+// TODO: tidy up a bit
 func handShake(server *Server) {
 	fmt.Println("hello")
 	conn, err := net.Dial("tcp", server.replicaConfig.masterAddress+":"+server.replicaConfig.masterPort)
 
+	reader := NewReader(conn)
 	if err != nil {
 		fmt.Printf("cannot connect to %v:%v", server.replicaConfig.masterAddress, server.replicaConfig.masterPort)
 	}
@@ -184,50 +197,53 @@ func handShake(server *Server) {
 		return
 	}
 
-	inputComm, err := readInput(conn)
+	inputComm, err := reader.readInput()
 	if err != nil {
 		fmt.Print("error while pinging master replica", err)
 		conn.Close()
 		return
 	}
 
-	args := inputComm.records[0].data.([]string)
-	if args[0] != "PONG" {
+	args := inputComm[0].astNode.(ASTSimpleString).val
+	if args != "PONG" {
 		fmt.Print("Response its invalid")
 		os.Exit(1)
 	}
 
 	conn.Write([]byte(BuildPrimitiveRESPArray([]string{"REPLCONF", "listening-port", server.port})))
 
-	inputComm, err = readInput(conn)
+	inputComm, err = reader.readInput()
 	if err != nil {
 		fmt.Print("error while replConf listening-port master replica")
 		conn.Close()
 		return
 	}
 
-	args = inputComm.records[0].data.([]string)
-	if args[0] != "OK" {
-		fmt.Printf("Response its invalid, expected ok we got:%v", args[0])
+	args = inputComm[0].astNode.(ASTSimpleString).val
+	if args != "OK" {
+		fmt.Printf("Response its invalid, expected ok we got:%v", args)
 		os.Exit(1)
 	}
 
 	conn.Write([]byte(BuildPrimitiveRESPArray([]string{"REPLCONF", "capa", "psync2"})))
 
-	inputComm, err = readInput(conn)
+	inputComm, err = reader.readInput()
 	if err != nil {
 		fmt.Print("error while replConf capa  master replica")
 		conn.Close()
 		return
 	}
+	args = inputComm[0].astNode.(ASTSimpleString).val
 
-	args = inputComm.records[0].data.([]string)
-	if args[0] != "OK" {
-		fmt.Printf("Response its invalid, expected ok we got:%v", args[0])
+	if args != "OK" {
+		fmt.Printf("Response its invalid, expected ok we got:%v", args)
 		os.Exit(1)
 	}
 
 	conn.Write([]byte(BuildPrimitiveRESPArray([]string{"PSYNC", "?", "-1"})))
 
-	go handleConenction(MyConn{Conn: conn, ignoreWrites: false, ID: strconv.Itoa(rand.IntN(100))}, &Server{})
+	go handleConenction(
+		MyConn{Conn: conn, ignoreWrites: false, ID: strconv.Itoa(rand.IntN(100))},
+		&Server{},
+	)
 }

@@ -56,15 +56,13 @@ func TestSearch(t *testing.T) {
 
 	res := Search(&treeNode, "1-2", "2-0")
 
-	if(len(res) != 4) {
+	if len(res) != 4 {
 		t.Fatalf("There should be 4 entries, got:%v", res)
 	}
 
-
-
 }
 
-func ShouldSelfBalance(t *testing.T) {
+func TestShouldSelfBalance(t *testing.T) {
 
 	treeNode := Stream{}
 

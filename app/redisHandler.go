@@ -21,19 +21,22 @@ func (conn MyConn) Ping() (err error) {
 }
 
 func (conn MyConn) Echo(args []string) (err error) {
-	msg := args[1]
+	if len(args) > 1 {
+		return fmt.Errorf("echo command take only 1 argument")
+	}
+	msg := args[0]
 	_, err = conn.Write([]byte(BuildBulkString(msg)))
 	return err
 }
 
 func (conn MyConn) Set(args []string) (err error) {
-	key := args[1]
-	value := args[2]
+	key := args[0]
+	value := args[1]
 	param, paramValue := "", ""
 	var opResult bool
-	if len(args) >= 4 {
-		param = args[3]
-		paramValue = args[4]
+	if len(args) >= 3 {
+		param = args[2]
+		paramValue = args[3]
 	}
 
 	switch strings.ToLower(param) {
@@ -59,9 +62,9 @@ func (conn MyConn) Set(args []string) (err error) {
 }
 
 func (conn MyConn) Get(args []string, server *Server) (err error) {
-	key := args[1]
+	key := args[0]
 	var result string
-	value, err := HandleGetString(key, server)
+	value, err := HandleGetString(key, server.dbConfig)
 
 	if err != nil {
 		result = BuildNullBulkString()
@@ -80,24 +83,100 @@ func (conn MyConn) Info(args []string, serverCon *Server) (err error) {
 	return err
 }
 
-var linkedList = make(map[string]LinkedList)
+var linkedList = make(map[string]*LinkedList)
 
-func (conn MyConn) RPush(args []string, serverCon *Server) (err error) {
+func (conn MyConn) llen(args []string) (err error) {
+	if len(args) < 1 {
+		return fmt.Errorf("expected at least two arguments")
+	}
+
+	name := args[0]
+	list := linkedList[name]
+	size := 0
+	if list != nil {
+		size = list.size
+	}
+
+	response := BuildRespInt(size)
+	_, err = conn.Write([]byte(response))
+	return err
+}
+
+func (conn MyConn) rpush(args []string) (err error) {
 	if len(args) < 2 {
-		return fmt.Errorf("Expected at least two arguments")
+		return fmt.Errorf("expected at least two arguments")
 	}
 
 	name := args[0]
 	list, ok := linkedList[name]
 
 	if !ok {
-		list = *NewLinkesList()
+		list = NewLinkesList()
 		linkedList[name] = list
 	}
-	result := list.rpush(args[1])
+	var result int
+	for i := 1; i < len(args); i++ {
+		result = list.rpush(args[i])
+	}
 
 	response := BuildRespInt(result)
 	_, err = conn.Write([]byte(response))
+	return err
+}
+
+func (conn MyConn) lpush(args []string) (err error) {
+	if len(args) < 2 {
+		return fmt.Errorf("expected at least two arguments")
+	}
+
+	name := args[0]
+	list, ok := linkedList[name]
+
+	if !ok {
+		list = NewLinkesList()
+		linkedList[name] = list
+	}
+	var result int
+	for i := 1; i < len(args); i++ {
+		result = list.lpush(args[i])
+	}
+
+	response := BuildRespInt(result)
+	_, err = conn.Write([]byte(response))
+	return err
+}
+
+func (conn MyConn) lrange(args []string) (err error) {
+	if len(args) != 3 {
+		return fmt.Errorf("Incorrect number of arguments, expected 'LRANGE key start stop'")
+	}
+
+	list := linkedList[args[0]]
+	if list == nil {
+		_, err = conn.Write([]byte(BuildRESPArray([]string{})))
+
+		return err
+	}
+
+	start, err := strconv.Atoi(args[1])
+	if err != nil {
+		return fmt.Errorf("LRANGE couldnt convert start argument: '%v' to number", args[1])
+	}
+
+	end, err := strconv.Atoi(args[2])
+	if err != nil {
+		return fmt.Errorf("LRANGE couldnt convert end argument: '%v' to number", args[2])
+	}
+
+	result := list.getRange(start, end)
+	arrayEl := []string{}
+
+	for _, item := range result {
+		arrayEl = append(arrayEl, BuildBulkString(item))
+	}
+
+	_, err = conn.Write([]byte(BuildRESPArray(arrayEl)))
+
 	return err
 }
 
@@ -123,7 +202,7 @@ func (conn MyConn) replConfGetAct(server *Server) (err error) {
 }
 
 func (conn MyConn) replConfAct(args []string, server *Server) (err error) {
-	bytes := args[2]
+	bytes := args[1]
 	for _, rc := range server.masterConfig.replicaConnections {
 		if rc.RemoteAddr().String() == conn.RemoteAddr().String() {
 			conv, _ := strconv.Atoi(bytes)
@@ -134,7 +213,7 @@ func (conn MyConn) replConfAct(args []string, server *Server) (err error) {
 }
 
 func (conn MyConn) ReplConf(args []string, server *Server) (err error) {
-	command := ReplConfCommand(strings.ToUpper(args[1]))
+	command := ReplConfCommand(strings.ToUpper(args[0]))
 
 	switch command {
 	case LISTENING_PORT, CAPA:
@@ -168,15 +247,15 @@ func (conn MyConn) Psync(serverCon *Server) (err error) {
 }
 
 func (conn MyConn) Type(args []string) (err error) {
-	key := args[1]
+	key := args[0]
 	result := BuildSimpleString(HandleGetType(key))
 	_, err = conn.Write([]byte(result))
 	return err
 }
 
 func (conn MyConn) Xadd(args []string) (err error) {
-	streamKey := args[1]
-	entryKey := args[2]
+	streamKey := args[0]
+	entryKey := args[1]
 
 	entryKeySplited := strings.Split(entryKey, "-")
 
@@ -204,7 +283,7 @@ func (conn MyConn) Xadd(args []string) (err error) {
 	streamEntry := StreamEntry{
 		Timestamp:      entryKeySplited[0],
 		SequenceNumber: entryKeySplited[1],
-		Data:           args[3:],
+		Data:           args[2:],
 	}
 
 	newEntry := Stream{
@@ -224,12 +303,12 @@ func (conn MyConn) Xadd(args []string) (err error) {
 }
 
 func (conn MyConn) Xrange(args []string) (err error) {
-	streamKey := args[1]
-	startKey := args[2]
+	streamKey := args[0]
+	startKey := args[1]
 	if startKey == "-" {
 		startKey = "0-0"
 	}
-	endKey := args[3]
+	endKey := args[2]
 
 	stream, err := getStreamData(streamKey, startKey, endKey)
 	if err != nil {
@@ -242,8 +321,8 @@ func (conn MyConn) Xrange(args []string) (err error) {
 }
 
 func (conn MyConn) Config(args []string, server *Server) (err error) {
-	method := args[1]
-	property := args[2]
+	method := args[0]
+	property := args[1]
 	if method == "GET" {
 		if property == "dir" {
 			conn.Write([]byte(BuildPrimitiveRESPArray([]string{"dir", server.dbConfig.dirName})))
@@ -258,8 +337,8 @@ func (conn MyConn) Config(args []string, server *Server) (err error) {
 }
 
 func (conn MyConn) Keys(args []string, server *Server) (err error) {
-	if args[1] != "*" {
-		fmt.Print("not supported args", args[1])
+	if args[0] != "*" {
+		fmt.Print("not supported args", args[0])
 		return err
 	}
 
@@ -277,30 +356,30 @@ func (conn MyConn) Keys(args []string, server *Server) (err error) {
 
 func (conn MyConn) Xread(args []string) (err error) {
 	argLen := len(args)
-	streamNumbers := (argLen - 2) / 2
-	argsOffset := 2
+	streamNumbers := (argLen - 1) / 2
+	argsOffset := 1
 
-	if args[1] == "block" {
+	if args[0] == "block" {
 		//we need to have listner
-		streamNumbers = (argLen - 4) / 2
-		argsOffset = 4
-		sleepTime, err := strconv.Atoi(args[2])
+		streamNumbers = (argLen - 3) / 2
+		argsOffset = 3
+		sleepTime, err := strconv.Atoi(args[1])
 
 		if err != nil {
-			fmt.Print("we got value", args[2])
+			fmt.Print("we got value", args[1])
 			panic("argument is not a number")
 		}
 
 		if sleepTime == 0 {
 			listener := make(chan StreamEntry)
 
-			streamListners[args[4]] = listener
+			streamListners[args[3]] = listener
 			event := <-listener
 
 			resp1 := TreeNodeToArray([]TreeNodeResult{
 				{id: fmt.Sprintf("%v-%v", event.Timestamp, event.SequenceNumber), data: event.Data},
 			})
-			id := BuildBulkString(args[4])
+			id := BuildBulkString(args[3])
 			resp := fmt.Sprintf("*%v%v%v", 1, CLRF, fmt.Sprintf("*%v%v%v%v", 2, CLRF, id, resp1))
 
 			conn.Write([]byte(resp))
@@ -364,13 +443,13 @@ func TreeNodeToArray(entries []TreeNodeResult) string {
 
 func (conn MyConn) Wait(args []string, server *Server) (err error) {
 
-	acksRequired, err := strconv.Atoi(args[1])
+	acksRequired, err := strconv.Atoi(args[0])
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	timeoutInMs, err := strconv.Atoi(args[2])
+	timeoutInMs, err := strconv.Atoi(args[1])
 	if err != nil {
 		fmt.Println(err)
 		return

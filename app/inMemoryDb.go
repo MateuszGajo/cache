@@ -47,12 +47,12 @@ func handleGet(key string) (CustomSetStore, error) {
 	return r, nil
 }
 
-func HandleGetString(key string, server *Server) (string, error) {
+func HandleGetString(key string, dbConfig DatabaseConfig) (string, error) {
 	res, err := handleGet(key)
 
 	if (res == CustomSetStore{}) {
 
-		resp := readFile(server.dbConfig.dirName + "/" + server.dbConfig.fileName)
+		resp := readFile(dbConfig.dirName + "/" + dbConfig.fileName)
 		res := ""
 		for _, v := range resp {
 			if v.key == key && (v.exp.UnixMilli() == 0 || v.exp.After(time.Now())) {

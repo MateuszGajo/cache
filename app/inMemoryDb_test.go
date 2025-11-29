@@ -14,17 +14,16 @@ func TestReadSetValue(t *testing.T) {
 		t.Fatalf("problem setting %v with %v value", key, value)
 	}
 
-	readVal, _ := HandleGetString(key, &Server{})
+	readVal, _ := HandleGetString(key, DatabaseConfig{})
 
-
-	if (readVal != "123") {
+	if readVal != "123" {
 		t.Fatalf("values are diffrent, set: %v, get:%v", value, readVal)
 	}
 }
 
 func TestReadNotExistValue(t *testing.T) {
 	key := "notExist"
-	readVal, err := HandleGetString(key,&Server{})
+	readVal, err := HandleGetString(key, DatabaseConfig{})
 
 	if err == nil {
 		t.Fatalf("Value should be empty, isnted recived: %v, err:%v", readVal, err)
@@ -41,15 +40,14 @@ func TestExpiredValueShouldReturnEmpty(t *testing.T) {
 		t.Fatalf("problem setting %v with %v value", key, value)
 	}
 
-	time.Sleep(time.Millisecond * time.Duration(expiry) )
+	time.Sleep(time.Millisecond * time.Duration(expiry))
 
-	readVal, err := HandleGetString(key,&Server{})
+	readVal, err := HandleGetString(key, DatabaseConfig{})
 
 	if err == nil {
 		t.Fatalf("Value should be empty, isnted recived: %v, err:%v", readVal, err)
 	}
 }
-
 
 func TestExpiredValueShouldReturnEmpty1(t *testing.T) {
 	handleSet("abc", "123", nil, "string")

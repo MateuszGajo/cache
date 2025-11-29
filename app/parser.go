@@ -6,32 +6,12 @@ import (
 	"strings"
 )
 
-// switch indicator {
-// 	case '+':
-// 		endIndex, record = handleSimpleString(tempInp)
-// 	case '$':
-// 		endIndex, record = handleBulkString(tempInp)
-// 	case '*':
-// 		endIndex, record = handleRespArray(tempInp)
-// 	case '-':
-// 		endIndex, record = handleSimpleError(tempInp)
-// 	case ':':
-// 		endIndex, record = handleInteger(tempInp)
-// 	default:
-// 		fmt.Println("unsupported break: ", indicator)
-// 		break loop
-// 	}
-
 type TokenType string
 
 const (
-	numberToken TokenType = "numberToken"
-	spaceToken  TokenType = "spaceToken"
-	eofToken    TokenType = "eofToken"
-	// simpleStringToken TokenType = "simpleStringToken"
-	// bulkStringToken   TokenType = "bulkStringToken"
-	// simpleErrorToken  TokenType = "simpleErrorToken"
-	// arrayToken        TokenType = "arrayToken"
+	numberToken  TokenType = "numberToken"
+	spaceToken   TokenType = "spaceToken"
+	eofToken     TokenType = "eofToken"
 	plusToken    TokenType = "plusToken"
 	dollarToken  TokenType = "dolarToken"
 	hyphenToken  TokenType = "hyphenToken"
@@ -42,15 +22,6 @@ const (
 )
 
 type TokenVal interface{}
-
-// func ()
-
-// type TokenValString string
-// type TokenValArray []Token
-// type TokenValError struct {
-// 	errorType string
-// 	errorMsg  string
-// }
 
 type Token struct {
 	tokenType TokenType
@@ -156,7 +127,7 @@ func (l *Lexar) readLiteralString() string {
 	char := l.peek()
 	output := ""
 
-	for isAlphaNumerical(char) || char == '-' {
+	for isAlphaNumerical(char) || char == '-' || char == '*' || char == '+' || char == '_' {
 		output += string(char)
 		char = l.next()
 	}
@@ -172,6 +143,13 @@ func (l *Lexar) parseDolarPattern() ([]Token, error) {
 		return nil, err
 	}
 	tokens = append(tokens, numberToken)
+	clrfToken, err := l.parseCLRFPattern()
+	if err != nil {
+		return nil, err
+	}
+	tokens = append(tokens, clrfToken...)
+	literal := l.readStringLitteral()
+	tokens = append(tokens, literal...)
 	return tokens, nil
 }
 
@@ -235,7 +213,7 @@ func (l *Lexar) parseRespData() ([]Token, error) {
 	case ':':
 		currTokens, err = l.parseNumberPattern()
 	case ' ':
-		currTokens = []Token{{tokenType: spaceToken, val: " ", rawVal: " "}}
+		currTokens = []Token{{tokenType: spaceToken, rawVal: " "}}
 		l.next()
 	case '+':
 		currTokens = []Token{{tokenType: plusToken, rawVal: "+"}}
@@ -342,56 +320,28 @@ type ParseResult struct {
 	records []ParseResultRecord
 }
 
-type ASTNode interface {
-	// getRawData() string
-}
+type ASTNode interface{}
 
 type ASTNumber struct {
 	val int
 }
 
-// func (astNumber ASTNumber) getRawData() string {
-// 	panic("astNumber doesnt have raw data implemented")
-// }
-
 type ASTSimpleString struct {
 	val string
 }
 
-// func (astSimpleString ASTSimpleString) getRawData() string {
-// 	panic("astNumber doesnt have raw data implemented")
-// }
-
 type ASTBulkString struct {
 	val string
 }
-
-// func (astBulkString ASTBulkString) getRawData() string {
-// 	panic("astNumber doesnt have raw data implemented")
-// }
 
 type ASTSimpleError struct {
 	errType string
 	msg     string
 }
 
-// func (astSimpleError ASTSimpleError) getRawData() string {
-// 	panic("astNumber doesnt have raw data implemented")
-// }
-
 type ASTArray struct {
 	values []ASTNode
-	tokens []Token
 }
-
-// func (astArray ASTArray) getRawData() string {
-// 	raw := ""
-
-// 	for _, token := range astArray.tokens {
-// 		raw += token.rawVal
-// 	}
-// 	return raw
-// }
 
 type ParseResultRecord struct {
 	astNode  ASTNode
@@ -408,6 +358,7 @@ func (p *Parser) getRawInput(start int, end int) string {
 }
 
 func (p *Parser) parseStream(input string) ParseResult {
+	p.index = 0
 	lexar := NewLexar(input)
 	result := lexar.parse()
 	if result.err != nil {
@@ -541,7 +492,7 @@ func (p *Parser) parseBulkString() (ASTNode, *ParseError) {
 		if token.tokenType != spaceToken {
 			break
 		}
-		data += token.val.(string)
+		data += token.rawVal
 	}
 
 	if len(data) != lengthToken.val.(int) {
@@ -578,29 +529,6 @@ func (p *Parser) parseBulkString() (ASTNode, *ParseError) {
 // numberToken  -> digitChar+
 // alphaChar    -> 'a'..'z' | 'A'..'Z'
 // digitChar    -> '0'..'9'
-
-// "*3\r\n
-//    $11\r\nbulk string\r\n
-//    +OK\r\n
-//    *1\r\n
-//        -ERRTYPE message\r\n"
-
-// "*3\r\n                          we are on 26-sith because we did jump here after first array parsed
-// *2\r\n$3\r\n0-2\r\n              we also jumped here after array was parsed
-//     *2\r\n$7\r\nfoo2\r\n$7\r\nbar2\r\n   and we also jumped here after array was parsed, where the jump should occur???
-// *2\r\n$3\r\n0-3\r\n
-//     *2\r\n$4\r\nfoo3\r\n$4\r\nbar3\r\n
-// *2\r\n$3\r\n0-4\r\n
-//     *2\r\n$4\r\nfoo4\r\n$4\r\nbar4\r\n"
-
-// problem is calling p.next at the end of parse array function
-// 1. add test for it
-// 2. fix issue
-
-// lets analyze the problem
-// what was the reason to call next in the first place??
-// we called it because of when we end parsing array we need to move on to the next data
-// but the problem is when we have multiple nested array we're going to far
 func (p *Parser) praseArray() (ASTNode, *ParseError) {
 	length := p.next()
 	err := p.expect(numberToken)

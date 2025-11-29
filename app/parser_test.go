@@ -16,20 +16,20 @@ func TestParserTokenizeInt(t *testing.T) {
 		{
 			input: BuildRespInt(5),
 			expectedTokens: []Token{
-				{tokenType: colonToken},
-				{tokenType: numberToken, val: 5},
-				{tokenType: CLRFToken},
+				{tokenType: colonToken, rawVal: ":"},
+				{tokenType: numberToken, val: 5, rawVal: "5"},
+				{tokenType: CLRFToken, rawVal: "\r\n"},
 			},
 		},
 		{
 			input: BuildRespInt(5) + BuildRespInt(8),
 			expectedTokens: []Token{
-				{tokenType: colonToken},
-				{tokenType: numberToken, val: 5},
-				{tokenType: CLRFToken},
-				{tokenType: colonToken},
-				{tokenType: numberToken, val: 8},
-				{tokenType: CLRFToken},
+				{tokenType: colonToken, rawVal: ":"},
+				{tokenType: numberToken, val: 5, rawVal: "5"},
+				{tokenType: CLRFToken, rawVal: "\r\n"},
+				{tokenType: colonToken, rawVal: ":"},
+				{tokenType: numberToken, val: 8, rawVal: "8"},
+				{tokenType: CLRFToken, rawVal: "\r\n"},
 			},
 		},
 	}
@@ -56,27 +56,27 @@ func TestParserTokenizeArray(t *testing.T) {
 		{
 			input: BuildRESPArray([]string{BuildRespInt(5)}),
 			expectedTokens: []Token{
-				{tokenType: starToken},
-				{tokenType: numberToken, val: 1},
-				{tokenType: CLRFToken},
-				{tokenType: colonToken},
-				{tokenType: numberToken, val: 5},
-				{tokenType: CLRFToken},
+				{tokenType: starToken, rawVal: "*"},
+				{tokenType: numberToken, val: 1, rawVal: "1"},
+				{tokenType: CLRFToken, rawVal: "\r\n"},
+				{tokenType: colonToken, rawVal: ":"},
+				{tokenType: numberToken, val: 5, rawVal: "5"},
+				{tokenType: CLRFToken, rawVal: "\r\n"},
 			},
 		},
 
 		{
 			input: BuildRESPArray([]string{BuildRespInt(5), BuildRespInt(8)}),
 			expectedTokens: []Token{
-				{tokenType: starToken},
-				{tokenType: numberToken, val: 2},
-				{tokenType: CLRFToken},
-				{tokenType: colonToken},
-				{tokenType: numberToken, val: 5},
-				{tokenType: CLRFToken},
-				{tokenType: colonToken},
-				{tokenType: numberToken, val: 8},
-				{tokenType: CLRFToken},
+				{tokenType: starToken, rawVal: "*"},
+				{tokenType: numberToken, val: 2, rawVal: "2"},
+				{tokenType: CLRFToken, rawVal: "\r\n"},
+				{tokenType: colonToken, rawVal: ":"},
+				{tokenType: numberToken, val: 5, rawVal: "5"},
+				{tokenType: CLRFToken, rawVal: "\r\n"},
+				{tokenType: colonToken, rawVal: ":"},
+				{tokenType: numberToken, val: 8, rawVal: "8"},
+				{tokenType: CLRFToken, rawVal: "\r\n"},
 			},
 		},
 	}
@@ -104,20 +104,20 @@ func TestParseTokenizeSimpleString(t *testing.T) {
 		{
 			input: BuildSimpleString("OK"),
 			expectedTokens: []Token{
-				{tokenType: plusToken},
-				{tokenType: literalToken, val: "OK"},
-				{tokenType: CLRFToken},
+				{tokenType: plusToken, rawVal: "+"},
+				{tokenType: literalToken, val: "OK", rawVal: "OK"},
+				{tokenType: CLRFToken, rawVal: "\r\n"},
 			},
 		},
 		{
 			input: BuildSimpleString("OK") + BuildSimpleString("SUCCESS"),
 			expectedTokens: []Token{
-				{tokenType: plusToken},
-				{tokenType: literalToken, val: "OK"},
-				{tokenType: CLRFToken},
-				{tokenType: plusToken},
-				{tokenType: literalToken, val: "SUCCESS"},
-				{tokenType: CLRFToken},
+				{tokenType: plusToken, rawVal: "+"},
+				{tokenType: literalToken, val: "OK", rawVal: "OK"},
+				{tokenType: CLRFToken, rawVal: "\r\n"},
+				{tokenType: plusToken, rawVal: "+"},
+				{tokenType: literalToken, val: "SUCCESS", rawVal: "SUCCESS"},
+				{tokenType: CLRFToken, rawVal: "\r\n"},
 			},
 		},
 	}
@@ -145,26 +145,26 @@ func TestParseTokenizeBulkString(t *testing.T) {
 		{
 			input: BuildBulkString("DATA"),
 			expectedTokens: []Token{
-				{tokenType: dollarToken},
-				{tokenType: numberToken, val: 4},
-				{tokenType: CLRFToken},
-				{tokenType: literalToken, val: "DATA"},
-				{tokenType: CLRFToken},
+				{tokenType: dollarToken, rawVal: "$"},
+				{tokenType: numberToken, val: 4, rawVal: "4"},
+				{tokenType: CLRFToken, rawVal: "\r\n"},
+				{tokenType: literalToken, val: "DATA", rawVal: "DATA"},
+				{tokenType: CLRFToken, rawVal: "\r\n"},
 			},
 		},
 		{
 			input: BuildBulkString("DATA") + BuildBulkString("EXTRA"),
 			expectedTokens: []Token{
-				{tokenType: dollarToken},
-				{tokenType: numberToken, val: 4},
-				{tokenType: CLRFToken},
-				{tokenType: literalToken, val: "DATA"},
-				{tokenType: CLRFToken},
-				{tokenType: dollarToken},
-				{tokenType: numberToken, val: 5},
-				{tokenType: CLRFToken},
-				{tokenType: literalToken, val: "EXTRA"},
-				{tokenType: CLRFToken},
+				{tokenType: dollarToken, rawVal: "$"},
+				{tokenType: numberToken, val: 4, rawVal: "4"},
+				{tokenType: CLRFToken, rawVal: "\r\n"},
+				{tokenType: literalToken, val: "DATA", rawVal: "DATA"},
+				{tokenType: CLRFToken, rawVal: "\r\n"},
+				{tokenType: dollarToken, rawVal: "$"},
+				{tokenType: numberToken, val: 5, rawVal: "5"},
+				{tokenType: CLRFToken, rawVal: "\r\n"},
+				{tokenType: literalToken, val: "EXTRA", rawVal: "EXTRA"},
+				{tokenType: CLRFToken, rawVal: "\r\n"},
 			},
 		},
 	}
@@ -180,7 +180,7 @@ func TestParseTokenizeBulkString(t *testing.T) {
 			}
 
 			if !reflect.DeepEqual(resp.Tokens, testCase.expectedTokens) {
-				t.Errorf("expected tokens: %v, got: %v", testCase.expectedTokens, resp.Tokens)
+				t.Errorf("expected tokens: %q, got: %q", testCase.expectedTokens, resp.Tokens)
 			}
 		})
 
@@ -193,24 +193,24 @@ func TestParseTokenizeSimpleError(t *testing.T) {
 		{
 			input: BuildSimpleError("Error"),
 			expectedTokens: []Token{
-				{tokenType: hyphenToken},
-				{tokenType: literalToken, val: "Error"},
-				{tokenType: CLRFToken},
+				{tokenType: hyphenToken, rawVal: "-"},
+				{tokenType: literalToken, val: "Error", rawVal: "Error"},
+				{tokenType: CLRFToken, rawVal: "\r\n"},
 			},
 		},
 		{
 			input: BuildSimpleErrorWithErrType("TYPE", "Error") + BuildSimpleError("Another one"),
 			expectedTokens: []Token{
-				{tokenType: hyphenToken},
-				{tokenType: literalToken, val: "TYPE"},
-				{tokenType: spaceToken, val: " "},
-				{tokenType: literalToken, val: "Error"},
-				{tokenType: CLRFToken},
-				{tokenType: hyphenToken},
-				{tokenType: literalToken, val: "Another"},
-				{tokenType: spaceToken, val: " "},
-				{tokenType: literalToken, val: "one"},
-				{tokenType: CLRFToken},
+				{tokenType: hyphenToken, rawVal: "-"},
+				{tokenType: literalToken, val: "TYPE", rawVal: "TYPE"},
+				{tokenType: spaceToken, rawVal: " "},
+				{tokenType: literalToken, val: "Error", rawVal: "Error"},
+				{tokenType: CLRFToken, rawVal: "\r\n"},
+				{tokenType: hyphenToken, rawVal: "-"},
+				{tokenType: literalToken, val: "Another", rawVal: "Another"},
+				{tokenType: spaceToken, rawVal: " "},
+				{tokenType: literalToken, val: "one", rawVal: "one"},
+				{tokenType: CLRFToken, rawVal: "\r\n"},
 			},
 		},
 	}
@@ -247,41 +247,44 @@ func TestParser(t *testing.T) {
 				records: []ParseResultRecord{{astNode: ASTNumber{val: 5}, rawInput: ":5\r\n"}},
 			},
 		},
-		// {
-		// 	input: BuildSimpleString("simple"),
-		// 	expectedResult: ParseResult{
-		// 		records: []ASTNode{ASTSimpleString{val: "simple"}},
-		// 	},
-		// },
-		// {
-		// 	input: BuildSimpleError("simple"),
-		// 	expectedResult: ParseResult{
-		// 		records: []ASTNode{ASTSimpleError{msg: "simple", errType: ""}},
-		// 	},
-		// },
-		// {
-		// 	input: BuildSimpleErrorWithErrType("ERRTYPE", "wrong number"),
-		// 	expectedResult: ParseResult{
-		// 		records: []ASTNode{ASTSimpleError{msg: "wrong number", errType: "ERRTYPE"}},
-		// 	},
-		// },
-		// {
-		// 	input: BuildBulkString("bulk string"),
-		// 	expectedResult: ParseResult{
-		// 		records: []ASTNode{ASTBulkString{val: "bulk string"}},
-		// 	},
-		// },
+		{
+			input: BuildSimpleString("simple"),
+			expectedResult: ParseResult{
+				records: []ParseResultRecord{{astNode: ASTSimpleString{val: "simple"}, rawInput: "+simple\r\n"}},
+			},
+		},
+		{
+			input: BuildSimpleError("simple"),
+			expectedResult: ParseResult{
+				records: []ParseResultRecord{{astNode: ASTSimpleError{msg: "simple", errType: ""}, rawInput: "-simple\r\n"}},
+			},
+		},
+		{
+			input: BuildSimpleErrorWithErrType("ERRTYPE", "wrong number"),
+			expectedResult: ParseResult{
+				records: []ParseResultRecord{{astNode: ASTSimpleError{msg: "wrong number", errType: "ERRTYPE"}, rawInput: "-ERRTYPE wrong number\r\n"}},
+			},
+		},
+		{
+			input: BuildBulkString("bulk string"),
+			expectedResult: ParseResult{
+				records: []ParseResultRecord{{astNode: ASTBulkString{val: "bulk string"}, rawInput: "$11\r\nbulk string\r\n"}},
+			},
+		},
 
-		// {
-		// 	input: BuildRESPArray([]string{BuildBulkString("bulk string")}),
-		// 	expectedResult: ParseResult{
-		// 		records: []ASTNode{
-		// 			ASTArray{values: []ASTNode{
-		// 				ASTBulkString{val: "bulk string"},
-		// 			}},
-		// 		},
-		// 	},
-		// },
+		{
+			input: BuildRESPArray([]string{BuildBulkString("bulk string")}),
+			expectedResult: ParseResult{
+				records: []ParseResultRecord{
+					{
+						astNode: ASTArray{values: []ASTNode{
+							ASTBulkString{val: "bulk string"},
+						}},
+						rawInput: "*1\r\n$11\r\nbulk string\r\n",
+					},
+				},
+			},
+		},
 		{
 			input: BuildRESPArray([]string{BuildBulkString("bulk string"), BuildSimpleString("OK")}),
 			expectedResult: ParseResult{
@@ -294,36 +297,45 @@ func TestParser(t *testing.T) {
 				},
 			},
 		},
-		// {
-		// 	input: BuildRESPArray([]string{BuildBulkString("bulk string"), BuildSimpleString("OK"), BuildRESPArray([]string{BuildSimpleErrorWithErrType("ERRTYPE", "message")})}),
-		// 	expectedResult: ParseResult{
-		// 		records: []ASTNode{
-		// 			ASTArray{values: []ASTNode{
-		// 				ASTBulkString{val: "bulk string"},
-		// 				ASTSimpleString{val: "OK"},
-		// 				ASTArray{values: []ASTNode{
-		// 					ASTSimpleError{errType: "ERRTYPE", msg: "message"}},
-		// 				},
-		// 			},
-		// 			},
-		// 		},
-		// 	},
-		// },
-		// {
-		// 	input: BuildRESPArray([]string{BuildBulkString("bulk string"), BuildRESPArray([]string{BuildSimpleErrorWithErrType("ERRTYPE", "message")})}) + BuildBulkString("bulk string 2"),
-		// 	expectedResult: ParseResult{
-		// 		records: []ASTNode{
-		// 			ASTArray{values: []ASTNode{
-		// 				ASTBulkString{val: "bulk string"},
-		// 				ASTArray{values: []ASTNode{
-		// 					ASTSimpleError{errType: "ERRTYPE", msg: "message"}},
-		// 				},
-		// 			},
-		// 			},
-		// 			ASTBulkString{val: "bulk string 2"},
-		// 		},
-		// 	},
-		// },
+		{
+			input: BuildRESPArray([]string{BuildBulkString("bulk string"), BuildSimpleString("OK"), BuildRESPArray([]string{BuildSimpleErrorWithErrType("ERRTYPE", "message")})}),
+			expectedResult: ParseResult{
+				records: []ParseResultRecord{
+					{
+						astNode: ASTArray{values: []ASTNode{
+							ASTBulkString{val: "bulk string"},
+							ASTSimpleString{val: "OK"},
+							ASTArray{values: []ASTNode{
+								ASTSimpleError{errType: "ERRTYPE", msg: "message"}},
+							},
+						},
+						},
+						rawInput: "*3\r\n$11\r\nbulk string\r\n+OK\r\n*1\r\n-ERRTYPE message\r\n",
+					},
+				},
+			},
+		},
+		{
+			input: BuildRESPArray([]string{BuildBulkString("bulk string"), BuildRESPArray([]string{BuildSimpleErrorWithErrType("ERRTYPE", "message")})}) + BuildBulkString("bulk string 2"),
+			expectedResult: ParseResult{
+				records: []ParseResultRecord{
+					{
+						astNode: ASTArray{values: []ASTNode{
+							ASTBulkString{val: "bulk string"},
+							ASTArray{values: []ASTNode{
+								ASTSimpleError{errType: "ERRTYPE", msg: "message"}},
+							},
+						},
+						},
+						rawInput: "*2\r\n$11\r\nbulk string\r\n*1\r\n-ERRTYPE message\r\n",
+					},
+					{
+						astNode:  ASTBulkString{val: "bulk string 2"},
+						rawInput: "$13\r\nbulk string 2\r\n",
+					},
+				},
+			},
+		},
 	}
 
 	for _, testCase := range testCases {
@@ -336,7 +348,7 @@ func TestParser(t *testing.T) {
 			}
 
 			if !reflect.DeepEqual(testCase.expectedResult.records, result.records) {
-				t.Errorf("Expected to have nodes: %+v, got: %+v", testCase.expectedResult.records, result.records)
+				t.Errorf("Expected to have nodes: %+q, got: %+q", testCase.expectedResult.records, result.records)
 			}
 
 		})
