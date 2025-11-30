@@ -1,6 +1,8 @@
 package main
 
 import (
+	"github.com/codecrafters-io/redis-starter-go/app/protocol"
+
 	"fmt"
 	"net"
 	"reflect"
@@ -11,15 +13,15 @@ import (
 	"time"
 )
 
-func readSingleLineResponse(conn net.Conn, t *testing.T) ASTNode {
-	reader := NewReader(conn)
-	RESPParsed, err := reader.readInput()
+func readSingleLineResponse(conn net.Conn, t *testing.T) protocol.ASTNode {
+	protocolInstance := protocol.NewProtocol(conn)
+	RESPParsed, err := protocolInstance.ReadInput()
 
 	if err != nil {
 		t.Error(err)
 	}
 
-	return RESPParsed[0].astNode
+	return RESPParsed[0].AstNode
 }
 
 func startServer() (*Server, net.Conn) {
@@ -57,11 +59,11 @@ func write(conn net.Conn, data []byte) {
 }
 
 func writeMany(conn net.Conn, data [][]byte) {
-	reader := NewReader(conn)
+	protocolInstance := protocol.NewProtocol(conn)
 	for _, item := range data {
 		write(conn, item)
 
-		_, err := reader.readInput()
+		_, err := protocolInstance.ReadInput()
 		if err != nil {
 			panic(err)
 		}
@@ -73,11 +75,11 @@ func TestCreateStream(t *testing.T) {
 
 	write(conn, []byte(BuildPrimitiveRESPArray([]string{"xadd", "key", "1-1", "foo", "bar"})))
 	node := readSingleLineResponse(conn, t)
-	addStreamResp := node.(ASTBulkString).val
+	addStreamResp := node.(protocol.ASTBulkString).Val
 
 	write(conn, []byte(BuildPrimitiveRESPArray([]string{"type", "key"})))
 	node = readSingleLineResponse(conn, t)
-	dataTypeResp := node.(ASTSimpleString).val
+	dataTypeResp := node.(protocol.ASTSimpleString).Val
 
 	if dataTypeResp != StreamType {
 		t.Errorf("Expected type to be: %v, got: %v", StreamType, dataTypeResp)
@@ -95,20 +97,20 @@ func TestCreateStreamWithDuplicate(t *testing.T) {
 
 	write(conn, []byte(BuildPrimitiveRESPArray([]string{"xadd", "key", "1-1", "foo", "bar"})))
 	node := readSingleLineResponse(conn, t)
-	addStreamResp := node.(ASTBulkString).val
+	addStreamResp := node.(protocol.ASTBulkString).Val
 
 	write(conn, []byte(BuildPrimitiveRESPArray([]string{"xadd", "key", "1-1", "foo", "bar"})))
 	node = readSingleLineResponse(conn, t)
-	addDuplicateStreamErrResp := node.(ASTSimpleError)
+	addDuplicateStreamErrResp := node.(protocol.ASTSimpleError)
 
 	if addStreamResp != "1-1" {
 		t.Errorf("expected streamId to be: %q, got:%q", "1-1", addStreamResp)
 	}
-	if addDuplicateStreamErrResp.msg != "The ID specified in XADD is equal or smaller than the target stream top item" {
-		t.Errorf("expected: %q, got:%q", "The ID specified in XADD is equal or smaller than the target stream top item", addDuplicateStreamErrResp.msg)
+	if addDuplicateStreamErrResp.Msg != "The ID specified in XADD is equal or smaller than the target stream top item" {
+		t.Errorf("expected: %q, got:%q", "The ID specified in XADD is equal or smaller than the target stream top item", addDuplicateStreamErrResp.Msg)
 	}
-	if addDuplicateStreamErrResp.errType != "ERR" {
-		t.Errorf("expected: %q, got:%q", "ERR", addDuplicateStreamErrResp.errType)
+	if addDuplicateStreamErrResp.ErrType != "ERR" {
+		t.Errorf("expected: %q, got:%q", "ERR", addDuplicateStreamErrResp.ErrType)
 	}
 
 	cleanup(server, conn)
@@ -120,11 +122,11 @@ func TestAutoGenerateStreamSequenceNumber(t *testing.T) {
 
 	write(conn, []byte(BuildPrimitiveRESPArray([]string{"xadd", "key", "1-*", "foo", "bar"})))
 	node := readSingleLineResponse(conn, t)
-	addFirstStreamResp := node.(ASTBulkString).val
+	addFirstStreamResp := node.(protocol.ASTBulkString).Val
 
 	write(conn, []byte(BuildPrimitiveRESPArray([]string{"xadd", "key", "1-*", "foo", "bar"})))
 	node = readSingleLineResponse(conn, t)
-	addSecondStreamResp := node.(ASTBulkString).val
+	addSecondStreamResp := node.(protocol.ASTBulkString).Val
 
 	if addFirstStreamResp != "1-0" {
 		t.Errorf("expected: %q, got:%q", "$3\r\n1-0\r\n", addFirstStreamResp)
@@ -141,11 +143,11 @@ func TestAutoGenerateSequenceNumberWith0Prefix(t *testing.T) {
 
 	write(conn, []byte(BuildPrimitiveRESPArray([]string{"xadd", "key", "0-*", "foo", "bar"})))
 	node := readSingleLineResponse(conn, t)
-	addFirstStreamResp := node.(ASTBulkString).val
+	addFirstStreamResp := node.(protocol.ASTBulkString).Val
 
 	write(conn, []byte(BuildPrimitiveRESPArray([]string{"xadd", "key", "1-*", "foo", "bar"})))
 	node = readSingleLineResponse(conn, t)
-	addSecondStreamResp := node.(ASTBulkString).val
+	addSecondStreamResp := node.(protocol.ASTBulkString).Val
 
 	if addFirstStreamResp != "0-1" {
 		t.Errorf("expected: %q, got:%q", "$3\r\n0-1\r\n", addFirstStreamResp)
@@ -162,7 +164,7 @@ func TestAutoGenerateSequenceAndTime(t *testing.T) {
 
 	write(conn, []byte(BuildPrimitiveRESPArray([]string{"xadd", "key", "*", "foo", "bar"})))
 	node := readSingleLineResponse(conn, t)
-	addStreamResp := node.(ASTBulkString).val
+	addStreamResp := node.(protocol.ASTBulkString).Val
 
 	responseSplitted := strings.Split(addStreamResp, "-")
 	respTime := responseSplitted[0]
@@ -193,28 +195,28 @@ func TestReadingStreamRangeWithinRanges(t *testing.T) {
 
 	write(conn, []byte(BuildPrimitiveRESPArray([]string{"xrange", "key", "0-2", "0-4"})))
 	RESPParsed := readSingleLineResponse(conn, t)
-	respData := RESPParsed.(ASTArray).values
+	respData := RESPParsed.(protocol.ASTArray).Values
 
-	expectedData := []ASTNode{
-		ASTArray{values: []ASTNode{
-			ASTBulkString{val: "0-2"},
-			ASTArray{values: []ASTNode{
-				ASTBulkString{val: "foo2"},
-				ASTBulkString{val: "bar2"},
+	expectedData := []protocol.ASTNode{
+		protocol.ASTArray{Values: []protocol.ASTNode{
+			protocol.ASTBulkString{Val: "0-2"},
+			protocol.ASTArray{Values: []protocol.ASTNode{
+				protocol.ASTBulkString{Val: "foo2"},
+				protocol.ASTBulkString{Val: "bar2"},
 			}},
 		}},
-		ASTArray{values: []ASTNode{
-			ASTBulkString{val: "0-3"},
-			ASTArray{values: []ASTNode{
-				ASTBulkString{val: "foo3"},
-				ASTBulkString{val: "bar3"},
+		protocol.ASTArray{Values: []protocol.ASTNode{
+			protocol.ASTBulkString{Val: "0-3"},
+			protocol.ASTArray{Values: []protocol.ASTNode{
+				protocol.ASTBulkString{Val: "foo3"},
+				protocol.ASTBulkString{Val: "bar3"},
 			}},
 		}},
-		ASTArray{values: []ASTNode{
-			ASTBulkString{val: "0-4"},
-			ASTArray{values: []ASTNode{
-				ASTBulkString{val: "foo4"},
-				ASTBulkString{val: "bar4"},
+		protocol.ASTArray{Values: []protocol.ASTNode{
+			protocol.ASTBulkString{Val: "0-4"},
+			protocol.ASTArray{Values: []protocol.ASTNode{
+				protocol.ASTBulkString{Val: "foo4"},
+				protocol.ASTBulkString{Val: "bar4"},
 			}},
 		}},
 	}
@@ -242,21 +244,21 @@ func TestReadingStreamTillRange(t *testing.T) {
 
 	write(conn, []byte(BuildPrimitiveRESPArray([]string{"xrange", "key", "-", "0-2"})))
 	RESPParsed := readSingleLineResponse(conn, t)
-	respData := RESPParsed.(ASTArray).values
+	respData := RESPParsed.(protocol.ASTArray).Values
 
-	expectedData := []ASTNode{
-		ASTArray{values: []ASTNode{
-			ASTBulkString{val: "0-1"},
-			ASTArray{values: []ASTNode{
-				ASTBulkString{val: "foo1"},
-				ASTBulkString{val: "bar1"},
+	expectedData := []protocol.ASTNode{
+		protocol.ASTArray{Values: []protocol.ASTNode{
+			protocol.ASTBulkString{Val: "0-1"},
+			protocol.ASTArray{Values: []protocol.ASTNode{
+				protocol.ASTBulkString{Val: "foo1"},
+				protocol.ASTBulkString{Val: "bar1"},
 			}},
 		}},
-		ASTArray{values: []ASTNode{
-			ASTBulkString{val: "0-2"},
-			ASTArray{values: []ASTNode{
-				ASTBulkString{val: "foo2"},
-				ASTBulkString{val: "bar2"},
+		protocol.ASTArray{Values: []protocol.ASTNode{
+			protocol.ASTBulkString{Val: "0-2"},
+			protocol.ASTArray{Values: []protocol.ASTNode{
+				protocol.ASTBulkString{Val: "foo2"},
+				protocol.ASTBulkString{Val: "bar2"},
 			}},
 		}},
 	}
@@ -284,21 +286,21 @@ func TestReadingStreamAllSequence(t *testing.T) {
 
 	write(conn, []byte(BuildPrimitiveRESPArray([]string{"xrange", "key", "0-0", "+"})))
 	RESPParsed := readSingleLineResponse(conn, t)
-	respData := RESPParsed.(ASTArray).values
+	respData := RESPParsed.(protocol.ASTArray).Values
 
-	expectedData := []ASTNode{
-		ASTArray{values: []ASTNode{
-			ASTBulkString{val: "0-1"},
-			ASTArray{values: []ASTNode{
-				ASTBulkString{val: "foo1"},
-				ASTBulkString{val: "bar1"},
+	expectedData := []protocol.ASTNode{
+		protocol.ASTArray{Values: []protocol.ASTNode{
+			protocol.ASTBulkString{Val: "0-1"},
+			protocol.ASTArray{Values: []protocol.ASTNode{
+				protocol.ASTBulkString{Val: "foo1"},
+				protocol.ASTBulkString{Val: "bar1"},
 			}},
 		}},
-		ASTArray{values: []ASTNode{
-			ASTBulkString{val: "0-2"},
-			ASTArray{values: []ASTNode{
-				ASTBulkString{val: "foo2"},
-				ASTBulkString{val: "bar2"},
+		protocol.ASTArray{Values: []protocol.ASTNode{
+			protocol.ASTBulkString{Val: "0-2"},
+			protocol.ASTArray{Values: []protocol.ASTNode{
+				protocol.ASTBulkString{Val: "foo2"},
+				protocol.ASTBulkString{Val: "bar2"},
 			}},
 		}},
 	}
@@ -326,16 +328,16 @@ func TestReadingStreamAllSequence(t *testing.T) {
 
 // 	write(conn, []byte(BuildPrimitiveRESPArray([]string{"xread", "stream", "testStream", "0-1"})))
 // 	RESPParsed := readSingleLineResponse(conn, t)
-// 	respData := RESPParsed.(ASTArray).values
+// 	respData := RESPParsed.(protocol.ASTArray).Values
 
-// 	expectedData := []ASTNode{
-// 		ASTArray{values: []ASTNode{
-// 			ASTBulkString{val: "testStream"},
-// 			ASTArray{values: []ASTNode{
-// 				ASTBulkString{val: "0-1"},
-// 				ASTArray{values: []ASTNode{
-// 					ASTBulkString{val: "temperature"},
-// 					ASTBulkString{val: "96"},
+// 	expectedData := []protocol.ASTNode{
+// 		protocol.ASTArray{Values: []protocol.ASTNode{
+// 			protocol.ASTBulkString{Val: "testStream"},
+// 			protocol.ASTArray{Values: []protocol.ASTNode{
+// 				protocol.ASTBulkString{Val: "0-1"},
+// 				protocol.ASTArray{Values: []protocol.ASTNode{
+// 					protocol.ASTBulkString{Val: "temperature"},
+// 					protocol.ASTBulkString{Val: "96"},
 // 				}},
 // 			}},
 // 		}},
@@ -355,7 +357,7 @@ func TestReadingStreamAllSequence(t *testing.T) {
 
 type SimpleASTTestCase struct {
 	input  string
-	output ASTNode
+	output protocol.ASTNode
 }
 
 func (testCase SimpleASTTestCase) runTest(conn net.Conn, t *testing.T) {
@@ -374,19 +376,19 @@ func TestRPUSH(t *testing.T) {
 	testCaeses := []SimpleASTTestCase{
 		{
 			input:  BuildPrimitiveRESPArray([]string{"rpush", "list01", "item1"}),
-			output: ASTNumber{val: 1},
+			output: protocol.ASTNumber{Val: 1},
 		},
 		{
 			input:  BuildPrimitiveRESPArray([]string{"rpush", "list01", "item2"}),
-			output: ASTNumber{val: 2},
+			output: protocol.ASTNumber{Val: 2},
 		},
 		{
 			input:  BuildPrimitiveRESPArray([]string{"rpush", "list01", "item3"}),
-			output: ASTNumber{val: 3},
+			output: protocol.ASTNumber{Val: 3},
 		},
 		{
 			input:  BuildPrimitiveRESPArray([]string{"rpush", "list02", "item1", "item2", "item3", "item4", "item5"}),
-			output: ASTNumber{val: 5},
+			output: protocol.ASTNumber{Val: 5},
 		},
 	}
 
@@ -406,50 +408,50 @@ func TestLrange(t *testing.T) {
 	testCaeses := []SimpleASTTestCase{
 		{
 			input:  BuildPrimitiveRESPArray([]string{"lrange", "emptyList", "0", "2"}),
-			output: ASTArray{values: []ASTNode{}},
+			output: protocol.ASTArray{Values: []protocol.ASTNode{}},
 		},
 		{
 			input:  BuildPrimitiveRESPArray([]string{"lrange", "list02", "2", "1"}),
-			output: ASTArray{values: []ASTNode{}},
+			output: protocol.ASTArray{Values: []protocol.ASTNode{}},
 		},
 		{
 			input: BuildPrimitiveRESPArray([]string{"lrange", "list02", "0", "2"}),
-			output: ASTArray{values: []ASTNode{
-				ASTBulkString{val: "item1"},
-				ASTBulkString{val: "item2"},
-				ASTBulkString{val: "item3"},
+			output: protocol.ASTArray{Values: []protocol.ASTNode{
+				protocol.ASTBulkString{Val: "item1"},
+				protocol.ASTBulkString{Val: "item2"},
+				protocol.ASTBulkString{Val: "item3"},
 			}},
 		},
 		{
 			input: BuildPrimitiveRESPArray([]string{"lrange", "list02", "0", "10"}),
-			output: ASTArray{values: []ASTNode{
-				ASTBulkString{val: "item1"},
-				ASTBulkString{val: "item2"},
-				ASTBulkString{val: "item3"},
-				ASTBulkString{val: "item4"},
-				ASTBulkString{val: "item5"},
+			output: protocol.ASTArray{Values: []protocol.ASTNode{
+				protocol.ASTBulkString{Val: "item1"},
+				protocol.ASTBulkString{Val: "item2"},
+				protocol.ASTBulkString{Val: "item3"},
+				protocol.ASTBulkString{Val: "item4"},
+				protocol.ASTBulkString{Val: "item5"},
 			}},
 		},
 		{
 			input: BuildPrimitiveRESPArray([]string{"lrange", "list02", "-2", "-1"}),
-			output: ASTArray{values: []ASTNode{
-				ASTBulkString{val: "item4"},
-				ASTBulkString{val: "item5"},
+			output: protocol.ASTArray{Values: []protocol.ASTNode{
+				protocol.ASTBulkString{Val: "item4"},
+				protocol.ASTBulkString{Val: "item5"},
 			}},
 		},
 
 		{
 			input: BuildPrimitiveRESPArray([]string{"lrange", "list02", "0", "-3"}),
-			output: ASTArray{values: []ASTNode{
-				ASTBulkString{val: "item1"},
-				ASTBulkString{val: "item2"},
-				ASTBulkString{val: "item3"},
+			output: protocol.ASTArray{Values: []protocol.ASTNode{
+				protocol.ASTBulkString{Val: "item1"},
+				protocol.ASTBulkString{Val: "item2"},
+				protocol.ASTBulkString{Val: "item3"},
 			}},
 		},
 
 		{
 			input:  BuildPrimitiveRESPArray([]string{"lrange", "list02", "-6", "-8"}),
-			output: ASTArray{values: []ASTNode{}},
+			output: protocol.ASTArray{Values: []protocol.ASTNode{}},
 		},
 	}
 
@@ -466,29 +468,29 @@ func TestLPUSH(t *testing.T) {
 	testCaeses := []SimpleASTTestCase{
 		{
 			input:  BuildPrimitiveRESPArray([]string{"lpush", "list01", "item1"}),
-			output: ASTNumber{val: 1},
+			output: protocol.ASTNumber{Val: 1},
 		},
 		{
 			input:  BuildPrimitiveRESPArray([]string{"lpush", "list01", "item2"}),
-			output: ASTNumber{val: 2},
+			output: protocol.ASTNumber{Val: 2},
 		},
 		{
 			input:  BuildPrimitiveRESPArray([]string{"lpush", "list02", "item1", "item2", "item3", "item4", "item5"}),
-			output: ASTNumber{val: 5},
+			output: protocol.ASTNumber{Val: 5},
 		},
 		{
 			input: BuildPrimitiveRESPArray([]string{"lrange", "list01", "0", "2"}),
-			output: ASTArray{values: []ASTNode{
-				ASTBulkString{val: "item2"},
-				ASTBulkString{val: "item1"},
+			output: protocol.ASTArray{Values: []protocol.ASTNode{
+				protocol.ASTBulkString{Val: "item2"},
+				protocol.ASTBulkString{Val: "item1"},
 			}},
 		},
 		{
 			input: BuildPrimitiveRESPArray([]string{"lrange", "list02", "0", "2"}),
-			output: ASTArray{values: []ASTNode{
-				ASTBulkString{val: "item5"},
-				ASTBulkString{val: "item4"},
-				ASTBulkString{val: "item3"},
+			output: protocol.ASTArray{Values: []protocol.ASTNode{
+				protocol.ASTBulkString{Val: "item5"},
+				protocol.ASTBulkString{Val: "item4"},
+				protocol.ASTBulkString{Val: "item3"},
 			}},
 		},
 	}
@@ -509,11 +511,65 @@ func TestLlen(t *testing.T) {
 	testCaeses := []SimpleASTTestCase{
 		{
 			input:  BuildPrimitiveRESPArray([]string{"llen", "emptyList"}),
-			output: ASTNumber{val: 0},
+			output: protocol.ASTNumber{Val: 0},
 		},
 		{
 			input:  BuildPrimitiveRESPArray([]string{"llen", "list02"}),
-			output: ASTNumber{val: 5},
+			output: protocol.ASTNumber{Val: 5},
+		},
+	}
+
+	for _, testCase := range testCaeses {
+		testCase.runTest(conn, t)
+	}
+
+	cleanup(server, conn)
+}
+
+func TestLpop(t *testing.T) {
+	server, conn := startServer()
+	streams := [][]byte{
+		[]byte(BuildPrimitiveRESPArray([]string{"rpush", "list02", "item1", "item2"})),
+		[]byte(BuildPrimitiveRESPArray([]string{"rpush", "list03", "item1", "item2", "item3"})),
+		[]byte(BuildPrimitiveRESPArray([]string{"rpush", "list04", "item1", "item2", "item3"})),
+	}
+	writeMany(conn, streams)
+	testCaeses := []SimpleASTTestCase{
+		{
+			input:  BuildPrimitiveRESPArray([]string{"lpop", "list02"}),
+			output: protocol.ASTBulkString{Val: "item1"},
+		},
+		{
+			input:  BuildPrimitiveRESPArray([]string{"lpop", "list02"}),
+			output: protocol.ASTBulkString{Val: "item2"},
+		},
+		{
+			input:  BuildPrimitiveRESPArray([]string{"lpop", "list02"}),
+			output: protocol.ASTBulkString{Val: ""},
+		},
+		{
+			input:  BuildPrimitiveRESPArray([]string{"lpop", "noList01"}),
+			output: protocol.ASTBulkString{Val: ""},
+		},
+		{
+			input: BuildPrimitiveRESPArray([]string{"lpop", "list03", "3"}),
+			output: protocol.ASTArray{
+				Values: []protocol.ASTNode{
+					protocol.ASTBulkString{Val: "item1"},
+					protocol.ASTBulkString{Val: "item2"},
+					protocol.ASTBulkString{Val: "item3"},
+				},
+			},
+		},
+		{
+			input: BuildPrimitiveRESPArray([]string{"lpop", "list04", "0", "-1"}),
+			output: protocol.ASTArray{
+				Values: []protocol.ASTNode{
+					protocol.ASTBulkString{Val: "item1"},
+					protocol.ASTBulkString{Val: "item2"},
+					protocol.ASTBulkString{Val: "item3"},
+				},
+			},
 		},
 	}
 

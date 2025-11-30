@@ -1,23 +1,55 @@
 package main
 
 import (
+	"context"
 	"encoding/base64"
 	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/codecrafters-io/redis-starter-go/app/protocol"
 )
 
 var EMPTY_RDB_FILE_BASE64 string = "UkVESVMwMDEx+glyZWRpcy12ZXIFNy4yLjD6CnJlZGlzLWJpdHPAQPoFY3RpbWXCbQi8ZfoIdXNlZC1tZW3CsMQQAPoIYW9mLWJhc2XAAP/wbjv+wP9aog=="
 
-func (conn MyConn) Ping() (err error) {
-	connectionFromMaster := strings.Contains(conn.RemoteAddr().String(), "6379")
-	if !connectionFromMaster {
-		_, err = conn.Write([]byte(BuildSimpleString("PONG")))
-		return err
+type CommandContext struct{}
+
+type Command interface {
+	Validate(args []string) error
+	Handle(args []string, ctx CommandContext) ([]protocol.RESPValue, error)
+}
+
+type PingCommand struct{}
+
+func (pingCommand PingCommand) Validate(args []string) error {
+	if len(args) > 1 {
+		return fmt.Errorf("expected only one argument")
 	}
+
 	return nil
+}
+
+func singleResp(val protocol.RESPValue) []protocol.RESPValue {
+	return []protocol.RESPValue{val}
+}
+
+func stringsToBulkStrings(data []string) []protocol.RESPValue {
+	items := make([]protocol.RESPValue, 0, len(data))
+	for _, item := range data {
+		items = append(items, protocol.BulkString{Value: item})
+	}
+	return items
+}
+
+func (pingCommand PingCommand) Handle(args []string, ctx CommandContext) ([]protocol.RESPValue, error) {
+	// connectionFromMaster := strings.Contains(conn.RemoteAddr().String(), "6379")
+	// if !connectionFromMaster {
+	// _, err = conn.Write([]byte(BuildSimpleString("PONG")))
+	// return err
+	// }
+	return singleResp(protocol.SimpleString{Value: "PONG"}), nil
 }
 
 func (conn MyConn) Echo(args []string) (err error) {
@@ -100,6 +132,140 @@ func (conn MyConn) llen(args []string) (err error) {
 	response := BuildRespInt(size)
 	_, err = conn.Write([]byte(response))
 	return err
+}
+
+//TODO
+//``````````````````
+// ````````````````````
+// ````````````````````
+// ````````````````````
+// ````````````````````
+// ````````````````````
+// ````````````````````
+// Clean up list methods a bit, maybe separate all the methods somewhere else
+// Maybe dont use write directly in these functions?? would be ther a benefit to it?
+// if core function returns only raw data ,then outer function build response (RESP) base on it
+// then separate function to write data, that handled writing efficetly
+// this outer function could valitate parameters?? and onyl send data that funcion belows needs
+// this separated concepts, bullshit, but do it if we really need it
+// i think at least writing data at out fucntion would be benefical, cause we have often a lot of if where we nned to return early, soe we then writing, checking for errors over and over
+// we could use just another function for writing and handling related stuff and only use it in those ifs, but still better to handle them at outter function
+// so we can move corect logic to specific files
+// then outter function could acutally validate paramters, pass only needed that an expect string and other basic values and then wrap it in resp protocol and write to client
+
+//TODO
+//``````````````````
+// ````````````````````
+// ````````````````````
+// ````````````````````
+// ````````````````````
+// ````````````````````
+// ````````````````````
+// Clean up list methods a bit, maybe separate all the methods somewhere else
+// Maybe dont use write directly in these functions?? would be ther a benefit to it?
+// if core function returns only raw data ,then outer function build response (RESP) base on it
+// then separate function to write data, that handled writing efficetly
+// this outer function could valitate parameters?? and onyl send data that funcion belows needs
+// this separated concepts, bullshit, but do it if we really need it
+// i think at least writing data at out fucntion would be benefical, cause we have often a lot of if where we nned to return early, soe we then writing, checking for errors over and over
+// we could use just another function for writing and handling related stuff and only use it in those ifs, but still better to handle them at outter function
+// so we can move corect logic to specific files
+// then outter function could acutally validate paramters, pass only needed that an expect string and other basic values and then wrap it in resp protocol and write to client
+
+func (conn MyConn) blpop(args []string) (err error) {
+	if len(args) < 2 {
+		return fmt.Errorf("expected at least three arguments")
+	}
+
+	writeData := conn.blpopBuildArr(args)
+
+	_, err = conn.Write(writeData)
+
+	return err
+}
+
+func (conn MyConn) blpopBuildArr(args []string) []byte {
+	collectionName := args[0]
+
+	data := conn.blpopCore(collectionName)
+
+	if data == "" {
+		return []byte(BuildNullArray())
+	}
+	return []byte(BuildRESPArray([]string{BuildBulkString(collectionName), BuildBulkString(data)}))
+
+}
+
+func (conn MyConn) blpopCore(collectionName string) string {
+
+	// var ctx context.Context
+	// var cancel context.CancelFunc
+
+	// if time > 0 {
+	ctx, cancel := context.WithTimeout(context.Background(), 20000*time.Millisecond)
+	// } else {
+	// 	ctx, cancel = context.WithCancel(context.Background())
+	// }
+	defer cancel()
+
+	timer := time.NewTimer(0)
+	defer timer.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ""
+		case <-timer.C:
+			timer.Reset(20 * time.Millisecond)
+
+			if data := lpopCore(collectionName); data != "" {
+				return data
+			}
+		}
+	}
+}
+
+type LpopCommand struct{}
+
+func (lpopCommand LpopCommand) Validate(args []string) error {
+	if len(args) < 1 || len(args) > 3 {
+		return fmt.Errorf("expected arguments: key [count]")
+	}
+	return nil
+}
+
+func (lpopCommand LpopCommand) Handle(args []string, ctx CommandContext) ([]protocol.RESPValue, error) {
+	name := args[0]
+	list := linkedList[name]
+	if list == nil {
+		return singleResp(protocol.BulkString{Null: true}), nil
+	}
+
+	count := 0
+	var err error
+	if len(args) == 2 {
+		if count, err = strconv.Atoi(args[1]); err != nil {
+			return nil, fmt.Errorf("couldnt convert paramters %v to number", args[1])
+		}
+	}
+
+	data := list.Lpop(count)
+
+	if count == 0 {
+		return singleResp(protocol.BulkString{Value: data[0]}), nil
+	}
+
+	return singleResp(protocol.Array{Values: stringsToBulkStrings(data)}), nil
+}
+
+func lpopCore(listName string) string {
+	list := linkedList[listName]
+
+	if list == nil {
+		return ""
+	}
+
+	return list.lpop()
 }
 
 func (conn MyConn) rpush(args []string) (err error) {

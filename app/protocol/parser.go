@@ -1,4 +1,4 @@
-package main
+package protocol
 
 import (
 	"fmt"
@@ -92,8 +92,19 @@ func (l *Lexar) getNumber() string {
 }
 
 func (l *Lexar) readNumberToken() (Token, error) {
+	isMinus := false
+	if l.peek() == '-' {
+		isMinus = true
+		l.next()
+	}
+
 	numberString := l.getNumber()
 	number, err := strconv.Atoi(numberString)
+
+	if isMinus {
+		numberString = string('-') + numberString
+		number = number * -1
+	}
 
 	if err != nil {
 		return Token{}, fmt.Errorf("error parsing value: %v to int", numberString)
@@ -323,29 +334,29 @@ type ParseResult struct {
 type ASTNode interface{}
 
 type ASTNumber struct {
-	val int
+	Val int
 }
 
 type ASTSimpleString struct {
-	val string
+	Val string
 }
 
 type ASTBulkString struct {
-	val string
+	Val string
 }
 
 type ASTSimpleError struct {
-	errType string
-	msg     string
+	ErrType string
+	Msg     string
 }
 
 type ASTArray struct {
-	values []ASTNode
+	Values []ASTNode
 }
 
 type ParseResultRecord struct {
-	astNode  ASTNode
-	rawInput string
+	AstNode  ASTNode
+	RawInput string
 }
 
 func (p *Parser) getRawInput(start int, end int) string {
@@ -392,10 +403,10 @@ func (p *Parser) parseStream(input string) ParseResult {
 				}
 			}
 		}
-
+		fmt.Println("")
 		parseResultRecord = append(parseResultRecord, ParseResultRecord{
-			astNode:  astNode,
-			rawInput: p.getRawInput(startTokenIndex, p.index),
+			AstNode:  astNode,
+			RawInput: p.getRawInput(startTokenIndex, p.index),
 		})
 		p.next()
 		startTokenIndex = p.index
@@ -423,7 +434,7 @@ func (p *Parser) parseInteger() (ASTNode, *ParseError) {
 		return nil, err
 	}
 
-	return ASTNumber{val: numberTok.val.(int)}, nil
+	return ASTNumber{Val: numberTok.val.(int)}, nil
 }
 
 func (p *Parser) parseSimpleString() (ASTNode, *ParseError) {
@@ -439,7 +450,7 @@ func (p *Parser) parseSimpleString() (ASTNode, *ParseError) {
 		return nil, err
 	}
 
-	return ASTSimpleString{val: msgToken.val.(string)}, nil
+	return ASTSimpleString{Val: msgToken.val.(string)}, nil
 }
 
 func (p *Parser) parseSimpleError() (ASTNode, *ParseError) {
@@ -470,7 +481,7 @@ func (p *Parser) parseSimpleError() (ASTNode, *ParseError) {
 		literals = literals[1:]
 	}
 
-	return ASTSimpleError{errType: errorType, msg: strings.Join(literals, " ")}, nil
+	return ASTSimpleError{ErrType: errorType, Msg: strings.Join(literals, " ")}, nil
 }
 
 func (p *Parser) parseBulkString() (ASTNode, *ParseError) {
@@ -480,12 +491,30 @@ func (p *Parser) parseBulkString() (ASTNode, *ParseError) {
 	}
 
 	p.next()
-	p.expect(CLRFToken)
+	err := p.expect(CLRFToken)
+	if err != nil {
+		return nil, err
+	}
+	// -1 special case, for null bulk token
+	if lengthToken.val.(int) == -1 {
+		token := p.next()
+		err := p.expect(literalToken)
+		if err != nil {
+			return nil, err
+		}
+		if token.val != "" {
+			return nil, NewInvalidDataError("Expected token to have null bulk string")
+		}
+		return ASTBulkString{Val: ""}, nil
+	}
 
 	data := ""
 	for {
 		token := p.next()
-		p.expect(literalToken)
+		err := p.expect(literalToken)
+		if err != nil {
+			return nil, err
+		}
 		data += token.val.(string)
 
 		token = p.next()
@@ -499,9 +528,11 @@ func (p *Parser) parseBulkString() (ASTNode, *ParseError) {
 		return nil, NewInvalidDataError(fmt.Sprintf("ParseBulkString error, length mismatch declared: %v got: %v bytes", len(data), lengthToken.val))
 	}
 
-	p.expect(CLRFToken)
-
-	return ASTBulkString{val: data}, nil
+	err = p.expect(CLRFToken)
+	if err != nil {
+		return nil, err
+	}
+	return ASTBulkString{Val: data}, nil
 }
 
 // Grammar (BNF Notation)
@@ -560,7 +591,7 @@ func (p *Parser) praseArray() (ASTNode, *ParseError) {
 		arrayAST = append(arrayAST, ast)
 	}
 
-	return ASTArray{values: arrayAST}, nil
+	return ASTArray{Values: arrayAST}, nil
 }
 
 func (p *Parser) parseRESPValue() (ASTNode, *ParseError) {

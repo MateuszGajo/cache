@@ -39,6 +39,34 @@ func (list *LinkedList) lpush(val string) int {
 	return list.size
 }
 
+func (list *LinkedList) Lpop(count int) []string {
+	data := []string{}
+
+	for i := 0; i < count; i++ {
+		data = append(data, list.lpop())
+	}
+
+	return data
+}
+
+func (list *LinkedList) lpop() string {
+	currentHead := list.head
+
+	if currentHead == nil {
+		return ""
+	}
+
+	next := currentHead.next
+
+	list.head = next
+	if next != nil {
+		next.prev = nil
+	}
+	list.size--
+
+	return currentHead.value
+}
+
 // blopop
 // command wait for a time specifried or undeffined amount if list is empty
 // so check if list is not empty reutnr element if empty do a ticketing with like checking every 50ms?
