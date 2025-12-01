@@ -104,7 +104,7 @@ func NewServer(options ...ServerOptions) *Server {
 
 	// TODO: it needs to be moved,
 	if server.role == "slave" {
-		handShake(server)
+		// handShake(server)
 	}
 
 	listen, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%v", server.port))

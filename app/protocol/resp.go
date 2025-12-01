@@ -1,9 +1,11 @@
-package main
+package protocol
 
 import (
 	"fmt"
 	"strings"
 )
+
+var CLRF string = "\r\n"
 
 func RESPSimpleString(input string) string {
 	arg := strings.Split(input, CLRF)[0]

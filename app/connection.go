@@ -3,11 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
-	"math/rand/v2"
-	"net"
-	"os"
 	"reflect"
-	"strconv"
 	"strings"
 
 	"github.com/codecrafters-io/redis-starter-go/app/protocol"
@@ -97,7 +93,7 @@ connectionLoop:
 
 			command := CommandType(strings.ToUpper(args[0]))
 
-			data, err := executeCommand(command, args[1:], conn, server)
+			data, err := executeCommand(command, args[1:])
 
 			if err != nil {
 				log.Fatal(err)
@@ -125,21 +121,28 @@ connectionLoop:
 }
 
 var commandRegistry = map[CommandType]Command{
-	PING: PingCommand{},
-	LPOP: LpopCommand{},
+	PING:   &PingCommand{},
+	ECHO:   &EchoCommand{},
+	SET:    &SetCommand{},
+	GET:    &GetCommand{},
+	RPUSH:  &RpushCommand{},
+	LRANGE: &LrangeCommand{},
+	LPUSH:  &LpushCommand{},
+	LLEN:   &LlenCommand{},
+	LPOP:   &LpopCommand{},
 }
 
-func executeCommand(commandType CommandType, args []string, conn MyConn, server *Server) ([]protocol.RESPValue, error) {
+func executeCommand(commandType CommandType, args []string) ([]protocol.RESPValue, error) {
 	command, ok := commandRegistry[commandType]
 	if !ok {
 		return nil, fmt.Errorf("Command %v not found", commandType)
 	}
 
-	if err := command.Validate(args); err != nil {
-		return nil, fmt.Errorf("Validate failed for command: %v, err: %v", commandType, err)
+	if err := command.Parse(args); err != nil {
+		return nil, fmt.Errorf("validate failed for command: %v, err: %v", commandType, err)
 	}
 
-	data, err := command.Handle(args, CommandContext{})
+	data, err := command.Handle(CommandContext{})
 	if err != nil {
 		return nil, fmt.Errorf("Handle failed for command: %v, err: %v", commandType, err)
 	}
@@ -207,73 +210,74 @@ func executeCommand(commandType CommandType, args []string, conn MyConn, server 
 }
 
 // TODO: tidy up a bit
-func handShake(server *Server) {
-	fmt.Println("hello")
-	conn, err := net.Dial("tcp", server.replicaConfig.masterAddress+":"+server.replicaConfig.masterPort)
+// func handShake(server *Server) {}
 
-	protocolInstance := protocol.NewProtocol(conn)
-	if err != nil {
-		fmt.Printf("cannot connect to %v:%v", server.replicaConfig.masterAddress, server.replicaConfig.masterPort)
-	}
+// 	fmt.Println("hello")
+// 	conn, err := net.Dial("tcp", server.replicaConfig.masterAddress+":"+server.replicaConfig.masterPort)
 
-	_, err = conn.Write([]byte(BuildPrimitiveRESPArray([]string{"ping"})))
+// 	protocolInstance := protocol.NewProtocol(conn)
+// 	if err != nil {
+// 		fmt.Printf("cannot connect to %v:%v", server.replicaConfig.masterAddress, server.replicaConfig.masterPort)
+// 	}
 
-	if err != nil {
-		fmt.Print("error while pinging master replica", err)
-		conn.Close()
-		return
-	}
+// 	_, err = conn.Write([]byte(BuildPrimitiveRESPArray([]string{"ping"})))
 
-	inputComm, err := protocolInstance.ReadInput()
+// 	if err != nil {
+// 		fmt.Print("error while pinging master replica", err)
+// 		conn.Close()
+// 		return
+// 	}
 
-	if err != nil {
-		fmt.Print("error while pinging master replica", err)
-		conn.Close()
-		return
-	}
+// 	inputComm, err := protocolInstance.ReadInput()
 
-	args := inputComm[0].AstNode.(protocol.ASTSimpleString).Val
-	if args != "PONG" {
-		fmt.Print("Response its invalid")
-		os.Exit(1)
-	}
+// 	if err != nil {
+// 		fmt.Print("error while pinging master replica", err)
+// 		conn.Close()
+// 		return
+// 	}
 
-	conn.Write([]byte(BuildPrimitiveRESPArray([]string{"REPLCONF", "listening-port", server.port})))
+// 	args := inputComm[0].AstNode.(protocol.ASTSimpleString).Val
+// 	if args != "PONG" {
+// 		fmt.Print("Response its invalid")
+// 		os.Exit(1)
+// 	}
 
-	inputComm, err = protocolInstance.ReadInput()
+// 	conn.Write([]byte(BuildPrimitiveRESPArray([]string{"REPLCONF", "listening-port", server.port})))
 
-	if err != nil {
-		fmt.Print("error while replConf listening-port master replica")
-		conn.Close()
-		return
-	}
+// 	inputComm, err = protocolInstance.ReadInput()
 
-	args = inputComm[0].AstNode.(protocol.ASTSimpleString).Val
-	if args != "OK" {
-		fmt.Printf("Response its invalid, expected ok we got:%v", args)
-		os.Exit(1)
-	}
+// 	if err != nil {
+// 		fmt.Print("error while replConf listening-port master replica")
+// 		conn.Close()
+// 		return
+// 	}
 
-	conn.Write([]byte(BuildPrimitiveRESPArray([]string{"REPLCONF", "capa", "psync2"})))
+// 	args = inputComm[0].AstNode.(protocol.ASTSimpleString).Val
+// 	if args != "OK" {
+// 		fmt.Printf("Response its invalid, expected ok we got:%v", args)
+// 		os.Exit(1)
+// 	}
 
-	inputComm, err = protocolInstance.ReadInput()
+// 	conn.Write([]byte(BuildPrimitiveRESPArray([]string{"REPLCONF", "capa", "psync2"})))
 
-	if err != nil {
-		fmt.Print("error while replConf capa  master replica")
-		conn.Close()
-		return
-	}
-	args = inputComm[0].AstNode.(protocol.ASTSimpleString).Val
+// 	inputComm, err = protocolInstance.ReadInput()
 
-	if args != "OK" {
-		fmt.Printf("Response its invalid, expected ok we got:%v", args)
-		os.Exit(1)
-	}
+// 	if err != nil {
+// 		fmt.Print("error while replConf capa  master replica")
+// 		conn.Close()
+// 		return
+// 	}
+// 	args = inputComm[0].AstNode.(protocol.ASTSimpleString).Val
 
-	conn.Write([]byte(BuildPrimitiveRESPArray([]string{"PSYNC", "?", "-1"})))
+// 	if args != "OK" {
+// 		fmt.Printf("Response its invalid, expected ok we got:%v", args)
+// 		os.Exit(1)
+// 	}
 
-	go handleConenction(
-		MyConn{Conn: conn, ignoreWrites: false, ID: strconv.Itoa(rand.IntN(100))},
-		&Server{},
-	)
-}
+// 	conn.Write([]byte(BuildPrimitiveRESPArray([]string{"PSYNC", "?", "-1"})))
+
+// 	go handleConenction(
+// 		MyConn{Conn: conn, ignoreWrites: false, ID: strconv.Itoa(rand.IntN(100))},
+// 		&Server{},
+// 	)
+// }

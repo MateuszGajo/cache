@@ -18,13 +18,17 @@ func NewNode(val string) *Node {
 	}
 }
 
-// add lpush
-// it will always be header
-// curent head should be moved to .next
-// currnet head should add prev to new head node
-// increment size by one
+// RPush appends one or more values to the start of the list stored at key
+// and returns the length of the list after the push operation.
+func (list *LinkedList) LPush(val []string) int {
+	for i := 0; i < len(val); i++ {
+		list.lpush(val[i])
+	}
 
-func (list *LinkedList) lpush(val string) int {
+	return list.size
+}
+
+func (list *LinkedList) lpush(val string) {
 	node := NewNode(val)
 	currentHead := list.head
 
@@ -35,8 +39,6 @@ func (list *LinkedList) lpush(val string) int {
 	}
 
 	list.size++
-
-	return list.size
 }
 
 func (list *LinkedList) Lpop(count int) []string {
@@ -71,6 +73,16 @@ func (list *LinkedList) lpop() string {
 // command wait for a time specifried or undeffined amount if list is empty
 // so check if list is not empty reutnr element if empty do a ticketing with like checking every 50ms?
 // next phase addiitonal timeout, in timeout condition also check if elements exists if not then return null
+
+// RPush appends one or more values to the end of the list stored at key
+// and returns the length of the list after the push operation.
+func (list *LinkedList) Rpush(val []string) int {
+	for i := 0; i < len(val); i++ {
+		list.rpush(val[i])
+	}
+
+	return list.size
+}
 
 func (list *LinkedList) rpush(val string) int {
 	node := NewNode(val)
@@ -194,22 +206,6 @@ func (list *LinkedList) removeFromBack() *Node {
 	current.next = nil
 
 	return node
-}
-
-func (list *LinkedList) count() int {
-	current := list.head
-
-	if current == nil {
-		return 0
-	}
-	count := 1
-
-	for current.next != nil {
-		count++
-		current = current.next
-	}
-
-	return count
 }
 
 func NewLinkesList() *LinkedList {

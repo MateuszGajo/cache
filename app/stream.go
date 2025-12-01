@@ -1,9 +1,7 @@
 package main
 
 import (
-	"errors"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 )
@@ -66,21 +64,21 @@ func getSequenceNumber(lastEntryId string, time string) string {
 	}
 }
 
-func getStreamData(key, start, end string) (string, error) {
-	stream := HandleGetStream(key)
-	if (stream == Stream{}) {
-		fmt.Print("stream does not exist")
-		os.Exit(1)
-	}
-	if end == "+" {
-		end = stream.LatestId
-	}
+// func getStreamData(key, start, end string) (string, error) {
+// 	stream := HandleGetStream(key)
+// 	if (stream == Stream{}) {
+// 		fmt.Print("stream does not exist")
+// 		os.Exit(1)
+// 	}
+// 	if end == "+" {
+// 		end = stream.LatestId
+// 	}
 
-	entries := Search(stream.Root, start, end)
-	if len(entries) == 0 {
-		return "", errors.New("no entries")
-	}
-	resp := TreeNodeToArray(entries)
+// 	entries := Search(stream.Root, start, end)
+// 	if len(entries) == 0 {
+// 		return "", errors.New("no entries")
+// 	}
+// 	resp := TreeNodeToArray(entries)
 
-	return resp, nil
-}
+// 	return resp, nil
+// }

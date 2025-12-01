@@ -8,13 +8,9 @@ import (
 func TestReadSetValue(t *testing.T) {
 	key := "abc"
 	value := "123"
-	res := handleSet(key, value, nil, "string")
+	handleSet(key, value, 0, "string")
 
-	if !res {
-		t.Fatalf("problem setting %v with %v value", key, value)
-	}
-
-	readVal, _ := HandleGetString(key, DatabaseConfig{})
+	readVal, _ := HandleGetString(key)
 
 	if readVal != "123" {
 		t.Fatalf("values are diffrent, set: %v, get:%v", value, readVal)
@@ -23,7 +19,7 @@ func TestReadSetValue(t *testing.T) {
 
 func TestReadNotExistValue(t *testing.T) {
 	key := "notExist"
-	readVal, err := HandleGetString(key, DatabaseConfig{})
+	readVal, err := HandleGetString(key)
 
 	if err == nil {
 		t.Fatalf("Value should be empty, isnted recived: %v, err:%v", readVal, err)
@@ -34,15 +30,11 @@ func TestExpiredValueShouldReturnEmpty(t *testing.T) {
 	key := "abc"
 	value := "123"
 	expiry := 100
-	res := handleSet(key, value, &expiry, "string")
-
-	if !res {
-		t.Fatalf("problem setting %v with %v value", key, value)
-	}
+	handleSet(key, value, expiry, "string")
 
 	time.Sleep(time.Millisecond * time.Duration(expiry))
 
-	readVal, err := HandleGetString(key, DatabaseConfig{})
+	readVal, err := HandleGetString(key)
 
 	if err == nil {
 		t.Fatalf("Value should be empty, isnted recived: %v, err:%v", readVal, err)
@@ -50,8 +42,8 @@ func TestExpiredValueShouldReturnEmpty(t *testing.T) {
 }
 
 func TestExpiredValueShouldReturnEmpty1(t *testing.T) {
-	handleSet("abc", "123", nil, "string")
-	handleSet("def", Stream{}, nil, "stream")
+	handleSet("abc", "123", 0, "string")
+	handleSet("def", Stream{}, 0, "stream")
 
 	entryType := HandleGetType("abc")
 

@@ -19,6 +19,14 @@ func (s SimpleString) encode() []byte {
 	return []byte(fmt.Sprintf("+%s\r\n", s.Value))
 }
 
+type RESPInteger struct {
+	Value int
+}
+
+func (integer RESPInteger) encode() []byte {
+	return []byte(BuildRespInt(integer.Value))
+}
+
 type BulkString struct {
 	Value string
 	Null  bool

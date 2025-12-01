@@ -1,7 +1,8 @@
 package main
 
 import (
-	"errors"
+	"fmt"
+	"reflect"
 	"sync"
 	"time"
 )
@@ -15,13 +16,13 @@ type CustomSetStore struct {
 var m = map[string]CustomSetStore{}
 var lock = sync.RWMutex{}
 
-func handleSet(key string, value interface{}, expiryTime *int, recordType string) bool {
+func handleSet(key string, value interface{}, expiryTime int, recordType string) {
 	lock.Lock()
 	defer lock.Unlock()
-	if expiryTime != nil {
+	if expiryTime != 0 {
 		m[key] = CustomSetStore{
 			Value:    value,
-			ExpireAt: time.Now().Add(time.Duration(*expiryTime) * time.Millisecond),
+			ExpireAt: time.Now().Add(time.Duration(expiryTime) * time.Millisecond),
 			Type:     recordType,
 		}
 	} else {
@@ -32,45 +33,57 @@ func handleSet(key string, value interface{}, expiryTime *int, recordType string
 		}
 	}
 
-	return true
 }
 
-func handleGet(key string) (CustomSetStore, error) {
+type InMemoryDbError interface {
+	Error() string
+}
+
+type EmptyValueError struct{}
+
+func (error EmptyValueError) Error() string {
+	return "Empty value"
+}
+
+func handleGet(key string) (CustomSetStore, InMemoryDbError) {
 	defer lock.RUnlock()
 	lock.RLock()
 	r, ok := m[key]
 
 	if !ok || (time.Now().After(r.ExpireAt) && r.ExpireAt != time.Time{}) {
-		return CustomSetStore{}, errors.New("There is no value")
+		return CustomSetStore{}, EmptyValueError{}
 	}
 
 	return r, nil
 }
 
-func HandleGetString(key string, dbConfig DatabaseConfig) (string, error) {
+func HandleGetString(key string) (string, InMemoryDbError) {
 	res, err := handleGet(key)
 
-	if (res == CustomSetStore{}) {
-
-		resp := readFile(dbConfig.dirName + "/" + dbConfig.fileName)
-		res := ""
-		for _, v := range resp {
-			if v.key == key && (v.exp.UnixMilli() == 0 || v.exp.After(time.Now())) {
-				res = v.value
-			}
-		}
-		if res != "" {
-			return res, nil
-		}
-
+	if err != nil {
 		return "", err
-
 	}
 
-	stringValue, ok := res.Value.(string)
+	// if (res == CustomSetStore{}) {
 
+	// 	resp := readFile(dbConfig.dirName + "/" + dbConfig.fileName)
+	// 	res := ""
+	// 	for _, v := range resp {
+	// 		if v.key == key && (v.exp.UnixMilli() == 0 || v.exp.After(time.Now())) {
+	// 			res = v.value
+	// 		}
+	// 	}
+	// 	if res != "" {
+	// 		return res, nil
+	// 	}
+
+	// 	return "", err
+
+	// }
+
+	stringValue, ok := res.Value.(string)
 	if !ok {
-		panic("Value isn't type of string")
+		return "", fmt.Errorf("expected return value to be string, got: %v", reflect.TypeOf(stringValue))
 	}
 
 	return stringValue, err
