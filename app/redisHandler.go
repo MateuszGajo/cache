@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/codecrafters-io/redis-starter-go/app/protocol"
 )
@@ -21,7 +23,9 @@ func stringsToBulkStrings(data []string) []protocol.RESPValue {
 	return items
 }
 
-type CommandContext struct{}
+type CommandContext struct {
+	protocol *protocol.Protocol
+}
 
 type Command interface {
 	Parse(args []string) error
@@ -311,96 +315,78 @@ func (llenCommand *LlenCommand) Handle(ctx CommandContext) ([]protocol.RESPValue
 	return singleResp(protocol.RESPInteger{Value: size}), nil
 }
 
-// //TODO
-// //``````````````````
-// // ````````````````````
-// // ````````````````````
-// // ````````````````````
-// // ````````````````````
-// // ````````````````````
-// // ````````````````````
-// // Clean up list methods a bit, maybe separate all the methods somewhere else
-// // Maybe dont use write directly in these functions?? would be ther a benefit to it?
-// // if core function returns only raw data ,then outer function build response (RESP) base on it
-// // then separate function to write data, that handled writing efficetly
-// // this outer function could valitate parameters?? and onyl send data that funcion belows needs
-// // this separated concepts, bullshit, but do it if we really need it
-// // i think at least writing data at out fucntion would be benefical, cause we have often a lot of if where we nned to return early, soe we then writing, checking for errors over and over
-// // we could use just another function for writing and handling related stuff and only use it in those ifs, but still better to handle them at outter function
-// // so we can move corect logic to specific files
-// // then outter function could acutally validate paramters, pass only needed that an expect string and other basic values and then wrap it in resp protocol and write to client
+type BlpopCommand struct {
+	keys      []string
+	timeoutMs float64
+}
 
-// //TODO
-// //``````````````````
-// // ````````````````````
-// // ````````````````````
-// // ````````````````````
-// // ````````````````````
-// // ````````````````````
-// // ````````````````````
-// // Clean up list methods a bit, maybe separate all the methods somewhere else
-// // Maybe dont use write directly in these functions?? would be ther a benefit to it?
-// // if core function returns only raw data ,then outer function build response (RESP) base on it
-// // then separate function to write data, that handled writing efficetly
-// // this outer function could valitate parameters?? and onyl send data that funcion belows needs
-// // this separated concepts, bullshit, but do it if we really need it
-// // i think at least writing data at out fucntion would be benefical, cause we have often a lot of if where we nned to return early, soe we then writing, checking for errors over and over
-// // we could use just another function for writing and handling related stuff and only use it in those ifs, but still better to handle them at outter function
-// // so we can move corect logic to specific files
-// // then outter function could acutally validate paramters, pass only needed that an expect string and other basic values and then wrap it in resp protocol and write to client
+func (blpopCommand *BlpopCommand) Parse(args []string) error {
+	if len(args) < 2 {
+		return fmt.Errorf("expected at least two arguments: key [key ...] timeout")
+	}
+	blpopCommand.keys = make([]string, len(args)-1)
 
-// func (conn MyConn) blpop(args []string) (err error) {
-// 	if len(args) < 2 {
-// 		return fmt.Errorf("expected at least three arguments")
-// 	}
+	for i := 0; i < len(args)-1; i++ {
+		blpopCommand.keys[i] = args[i]
+	}
 
-// 	writeData := conn.blpopBuildArr(args)
+	timeout, err := strconv.ParseFloat(args[len(args)-1], 32)
 
-// 	_, err = conn.Write(writeData)
+	if err != nil {
+		return fmt.Errorf("error converting timeout to float64, err: %v", err)
+	}
+	if timeout < 0 {
+		return fmt.Errorf("timeout must be >=0")
+	}
 
-// 	return err
-// }
+	blpopCommand.timeoutMs = timeout * 1000
 
-// func (conn MyConn) blpopBuildArr(args []string) []byte {
-// 	collectionName := args[0]
+	return nil
+}
 
-// 	data := conn.blpopCore(collectionName)
+func (blpopCommand *BlpopCommand) Handle(ctx CommandContext) ([]protocol.RESPValue, error) {
 
-// 	if data == "" {
-// 		return []byte(BuildNullArray())
-// 	}
-// 	return []byte(BuildRESPArray([]string{BuildBulkString(collectionName), BuildBulkString(data)}))
+	var timeoutCtx context.Context
+	var cancel context.CancelFunc
+	if blpopCommand.timeoutMs > 0 {
+		timeoutCtx, cancel = context.WithTimeout(context.Background(), time.Duration(blpopCommand.timeoutMs)*time.Millisecond)
+	} else {
+		timeoutCtx, cancel = context.WithCancel(context.Background())
+	}
 
-// }
+	defer cancel()
 
-// func (conn MyConn) blpopCore(collectionName string) string {
+	timer := time.NewTimer(0)
+	defer timer.Stop()
 
-// 	// var ctx context.Context
-// 	// var cancel context.CancelFunc
+	data := []protocol.RESPValue{}
+	keys := blpopCommand.keys
 
-// 	// if time > 0 {
-// 	ctx, cancel := context.WithTimeout(context.Background(), 20000*time.Millisecond)
-// 	// } else {
-// 	// 	ctx, cancel = context.WithCancel(context.Background())
-// 	// }
-// 	defer cancel()
+	for {
+		select {
+		case <-timeoutCtx.Done():
+			if len(data) != 0 {
+				return data, nil
+			}
+			return singleResp(protocol.Array{Null: true}), nil
+		case <-timer.C:
+			timer.Reset(20 * time.Millisecond)
 
-// 	timer := time.NewTimer(0)
-// 	defer timer.Stop()
+			for i := 0; i < len(keys); i++ {
+				el := lpop(keys[i], 1)
+				if el != nil {
+					data = append(data, protocol.Array{Values: []protocol.RESPValue{protocol.BulkString{Value: keys[i]}, el}})
+					keys = append(keys[:i], keys[i+1:]...)
+					i--
+				}
+			}
 
-// 	for {
-// 		select {
-// 		case <-ctx.Done():
-// 			return ""
-// 		case <-timer.C:
-// 			timer.Reset(20 * time.Millisecond)
-
-// 			if data := lpopCore(collectionName); data != "" {
-// 				return data
-// 			}
-// 		}
-// 	}
-// }
+			if len(keys) == 0 {
+				return data, nil
+			}
+		}
+	}
+}
 
 type LpopCommand struct {
 	key   string
@@ -411,6 +397,7 @@ func (lpopCommand *LpopCommand) Parse(args []string) error {
 	if len(args) < 1 || len(args) > 3 {
 		return fmt.Errorf("expected arguments: key [count]")
 	}
+	lpopCommand.count = 1
 
 	lpopCommand.key = args[0]
 
@@ -426,29 +413,65 @@ func (lpopCommand *LpopCommand) Parse(args []string) error {
 }
 
 func (lpopCommand LpopCommand) Handle(ctx CommandContext) ([]protocol.RESPValue, error) {
-	list := linkedList[lpopCommand.key]
-	if list == nil {
+	data := lpop(lpopCommand.key, lpopCommand.count)
+
+	if data == nil {
 		return singleResp(protocol.BulkString{Null: true}), nil
 	}
 
-	data := list.Lpop(lpopCommand.count)
-
-	if lpopCommand.count == 0 {
-		return singleResp(protocol.BulkString{Value: data[0]}), nil
-	}
-
-	return singleResp(protocol.Array{Values: stringsToBulkStrings(data)}), nil
+	return singleResp(data), nil
 }
 
-// func lpopCore(listName string) string {
-// 	list := linkedList[listName]
+func lpop(key string, count int) protocol.RESPValue {
+	list := linkedList[key]
+	if list == nil {
+		return nil
+	}
 
-// 	if list == nil {
-// 		return ""
-// 	}
+	data := list.Lpop(count)
 
-// 	return list.lpop()
-// }
+	if len(data) == 0 {
+		return nil
+	}
+
+	if len(data) == 1 {
+		return protocol.BulkString{Value: data[0]}
+	}
+
+	return protocol.Array{Values: stringsToBulkStrings(data)}
+}
+
+type SubscribeCommand struct {
+	channelNames []string
+}
+
+func (subscribeCommand *SubscribeCommand) Parse(args []string) error {
+	if len(args) < 1 {
+		return fmt.Errorf("expected at least one argument: channel [chanel ...]")
+	}
+
+	subscribeCommand.channelNames = make([]string, len(args))
+	for i := 0; i < len(args); i++ {
+		subscribeCommand.channelNames[i] = args[0]
+	}
+
+	return nil
+}
+
+func (subscribeCommand *SubscribeCommand) Handle(ctx CommandContext) ([]protocol.RESPValue, error) {
+	subscribeResp := SubscriberInstance.Subscribe(subscribeCommand.channelNames, ctx.protocol)
+
+	resp := []protocol.RESPValue{}
+	for i := 0; i < len(subscribeResp); i++ {
+		resp = append(resp, protocol.Array{Values: []protocol.RESPValue{
+			protocol.BulkString{Value: "subscribe"},
+			protocol.BulkString{Value: subscribeResp[i].channelName},
+			protocol.RESPInteger{Value: subscribeResp[i].count},
+		}})
+	}
+
+	return resp, nil
+}
 
 // type ReplConfCommand string
 

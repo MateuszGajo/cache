@@ -45,7 +45,11 @@ func (list *LinkedList) Lpop(count int) []string {
 	data := []string{}
 
 	for i := 0; i < count; i++ {
-		data = append(data, list.lpop())
+		el := list.lpop()
+		if el == "" {
+			return data
+		}
+		data = append(data, el)
 	}
 
 	return data

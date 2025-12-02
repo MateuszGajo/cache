@@ -16,7 +16,19 @@ type SimpleString struct {
 }
 
 func (s SimpleString) encode() []byte {
-	return []byte(fmt.Sprintf("+%s\r\n", s.Value))
+	return []byte(BuildSimpleString(s.Value))
+}
+
+type SimpleError struct {
+	ErrorType string
+	ErrorMsg  string
+}
+
+func (simpleError SimpleError) encode() []byte {
+	if simpleError.ErrorType == "" {
+		return []byte(BuildSimpleError(simpleError.ErrorMsg))
+	}
+	return []byte(BuildSimpleErrorWithErrType(simpleError.ErrorType, simpleError.ErrorMsg))
 }
 
 type RESPInteger struct {
@@ -34,9 +46,9 @@ type BulkString struct {
 
 func (b BulkString) encode() []byte {
 	if b.Null {
-		return []byte("$-1\r\n")
+		return []byte(BuildNullBulkString())
 	}
-	return []byte(fmt.Sprintf("$%d\r\n%s\r\n", len(b.Value), b.Value))
+	return []byte(BuildBulkString(b.Value))
 }
 
 type Array struct {
@@ -46,7 +58,7 @@ type Array struct {
 
 func (a Array) encode() []byte {
 	if a.Null {
-		return []byte("*-1\r\n")
+		return []byte(BuildNullArray())
 	}
 	result := fmt.Sprintf("*%d\r\n", len(a.Values))
 	for _, v := range a.Values {

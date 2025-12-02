@@ -12,28 +12,33 @@ import (
 type CommandType string
 
 const (
-	PING       CommandType = "PING"
-	ECHO       CommandType = "ECHO"
-	SET        CommandType = "SET"
-	GET        CommandType = "GET"
-	INFO       CommandType = "INFO"
-	REPLCONF   CommandType = "REPLCONF"
-	PSYNC      CommandType = "PSYNC"
-	FULLRESYNC CommandType = "FULLRESYNC"
-	RDBFILE    CommandType = "RDB-FILE"
-	WAIT       CommandType = "WAIT"
-	TYPE       CommandType = "TYPE"
-	RPUSH      CommandType = "RPUSH"
-	LPUSH      CommandType = "LPUSH"
-	LLEN       CommandType = "LLEN"
-	LPOP       CommandType = "LPOP"
-	BLPOP      CommandType = "BLPOP"
-	LRANGE     CommandType = "LRANGE"
-	XADD       CommandType = "XADD"
-	XRANGE     CommandType = "XRANGE"
-	XREAD      CommandType = "XREAD"
-	CONFIG     CommandType = "CONFIG"
-	KEYS       CommandType = "KEYS"
+	PING         CommandType = "PING"
+	ECHO         CommandType = "ECHO"
+	SET          CommandType = "SET"
+	GET          CommandType = "GET"
+	INFO         CommandType = "INFO"
+	REPLCONF     CommandType = "REPLCONF"
+	PSYNC        CommandType = "PSYNC"
+	FULLRESYNC   CommandType = "FULLRESYNC"
+	RDBFILE      CommandType = "RDB-FILE"
+	WAIT         CommandType = "WAIT"
+	TYPE         CommandType = "TYPE"
+	RPUSH        CommandType = "RPUSH"
+	LPUSH        CommandType = "LPUSH"
+	LLEN         CommandType = "LLEN"
+	LPOP         CommandType = "LPOP"
+	BLPOP        CommandType = "BLPOP"
+	SUBSCRIBE    CommandType = "SUBSCRIBE"
+	UNSUBSCRIBE  CommandType = "UNSUBSCRIBE"
+	PSUBSCRIBE   CommandType = "PSUBSCRIBE"
+	PUNSUBSCRIBE CommandType = "PUNSUBSCRIBE"
+	QUIT         CommandType = "QUIT"
+	LRANGE       CommandType = "LRANGE"
+	XADD         CommandType = "XADD"
+	XRANGE       CommandType = "XRANGE"
+	XREAD        CommandType = "XREAD"
+	CONFIG       CommandType = "CONFIG"
+	KEYS         CommandType = "KEYS"
 )
 
 func propagte(rawInput string, server *Server) {
@@ -93,7 +98,7 @@ connectionLoop:
 
 			command := CommandType(strings.ToUpper(args[0]))
 
-			data, err := executeCommand(command, args[1:])
+			data, err := executeCommand(command, args[1:], protocolInstance)
 
 			if err != nil {
 				log.Fatal(err)
@@ -121,18 +126,41 @@ connectionLoop:
 }
 
 var commandRegistry = map[CommandType]Command{
-	PING:   &PingCommand{},
-	ECHO:   &EchoCommand{},
-	SET:    &SetCommand{},
-	GET:    &GetCommand{},
-	RPUSH:  &RpushCommand{},
-	LRANGE: &LrangeCommand{},
-	LPUSH:  &LpushCommand{},
-	LLEN:   &LlenCommand{},
-	LPOP:   &LpopCommand{},
+	PING:      &PingCommand{},
+	ECHO:      &EchoCommand{},
+	SET:       &SetCommand{},
+	GET:       &GetCommand{},
+	RPUSH:     &RpushCommand{},
+	LRANGE:    &LrangeCommand{},
+	LPUSH:     &LpushCommand{},
+	LLEN:      &LlenCommand{},
+	LPOP:      &LpopCommand{},
+	BLPOP:     &BlpopCommand{},
+	SUBSCRIBE: &SubscribeCommand{},
 }
 
-func executeCommand(commandType CommandType, args []string) ([]protocol.RESPValue, error) {
+var subscribeModeAllowedCommand = []CommandType{SUBSCRIBE, UNSUBSCRIBE, PSUBSCRIBE, PUNSUBSCRIBE, QUIT, PING}
+
+func isCommandAllowedInSubscribeMode(commandType CommandType) bool {
+	for _, allowedCommandType := range subscribeModeAllowedCommand {
+		if allowedCommandType == commandType {
+			return true
+		}
+	}
+	return false
+}
+
+func executeCommand(commandType CommandType, args []string, protocolInstance *protocol.Protocol) ([]protocol.RESPValue, error) {
+
+	if protocolInstance.SubscribeCount > 0 {
+		if !isCommandAllowedInSubscribeMode(commandType) {
+			return singleResp(protocol.SimpleError{
+				ErrorType: "ERR",
+				ErrorMsg:  fmt.Sprintf("Cant execute '%v': only (P|S)SUBSCRIBE / (P|S)UNSUBSCRIBE / PING / QUIT / RESET are allowed in this context ", strings.ToLower(string(commandType))),
+			}), nil
+		}
+	}
+
 	command, ok := commandRegistry[commandType]
 	if !ok {
 		return nil, fmt.Errorf("Command %v not found", commandType)
@@ -142,7 +170,9 @@ func executeCommand(commandType CommandType, args []string) ([]protocol.RESPValu
 		return nil, fmt.Errorf("validate failed for command: %v, err: %v", commandType, err)
 	}
 
-	data, err := command.Handle(CommandContext{})
+	data, err := command.Handle(CommandContext{
+		protocol: protocolInstance,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("Handle failed for command: %v, err: %v", commandType, err)
 	}

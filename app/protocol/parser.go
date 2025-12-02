@@ -138,7 +138,8 @@ func (l *Lexar) readLiteralString() string {
 	char := l.peek()
 	output := ""
 
-	for isAlphaNumerical(char) || char == '-' || char == '*' || char == '+' || char == '_' {
+	for isAlphaNumerical(char) || char == '-' || char == '*' || char == '+' || char == '_' || char == '.' ||
+		char == 'a' || char == '|' || char == '(' || char == '/' {
 		output += string(char)
 		char = l.next()
 	}
