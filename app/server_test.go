@@ -11,6 +11,19 @@ import (
 	"github.com/codecrafters-io/redis-starter-go/app/protocol"
 )
 
+func readRawResp(conn net.Conn, timeoutMS int) *string {
+	buffer := make([]byte, 1024)
+	conn.SetDeadline(time.Now().Add(time.Duration(timeoutMS) * time.Millisecond))
+
+	n, err := conn.Read(buffer)
+
+	if err != nil {
+		return nil
+	}
+	data := string(buffer[:n])
+	return &data
+}
+
 func readResponse(conn net.Conn, t *testing.T) []protocol.ASTNode {
 	protocolInstance := protocol.NewProtocol(conn)
 	RESPParsed, err := protocolInstance.ReadInput()
@@ -88,6 +101,23 @@ func writeMany(conn net.Conn, data [][]byte) {
 			panic(err)
 		}
 	}
+}
+
+func TestEcho(t *testing.T) {
+	server := startServer()
+	conn := connectToServer("6379")
+	testCaeses := []SimpleASTTestCase{
+		{
+			input:  protocol.BuildPrimitiveRESPArray([]string{"echo", "mango"}),
+			output: protocol.ASTBulkString{Val: "mango"},
+		},
+	}
+
+	for _, testCase := range testCaeses {
+		testCase.runTest(conn, t)
+	}
+
+	cleanup(server, conn)
 }
 
 // func TestCreateStream(t *testing.T) {
@@ -646,8 +676,10 @@ func TestBlpopSleep(t *testing.T) {
 
 func TestSubscribe(t *testing.T) {
 	server := startServer()
-	conn := connectToServer("6379")
-	anotherConn := connectToServer("6379")
+	subscriberConnOne := connectToServer("6379")
+	SubscirberConnTwo := connectToServer("6379")
+	SubscirberConnThree := connectToServer("6379")
+	publisherConn := connectToServer("6379")
 	testCaeses := []SimpleASTTestCase{
 		{
 			input: protocol.BuildPrimitiveRESPArray([]string{"subscribe", "mychan"}),
@@ -657,35 +689,96 @@ func TestSubscribe(t *testing.T) {
 				protocol.ASTNumber{Val: 1},
 			}},
 		},
-		// {
-		// 	input: protocol.BuildPrimitiveRESPArray([]string{"subscribe", "mychan"}),
-		// 	output: protocol.ASTArray{Values: []protocol.ASTNode{
-		// 		protocol.ASTBulkString{Val: "subscribe"},
-		// 		protocol.ASTBulkString{Val: "mychan"},
-		// 		protocol.ASTNumber{Val: 1},
-		// 	}},
-		// },
-		// {
-		// 	input: protocol.BuildPrimitiveRESPArray([]string{"subscribe", "mychan2"}),
-		// 	output: protocol.ASTArray{Values: []protocol.ASTNode{
-		// 		protocol.ASTBulkString{Val: "subscribe"},
-		// 		protocol.ASTBulkString{Val: "mychan2"},
-		// 		protocol.ASTNumber{Val: 2},
-		// 	}},
-		// },
+		{
+			input: protocol.BuildPrimitiveRESPArray([]string{"subscribe", "mychan"}),
+			output: protocol.ASTArray{Values: []protocol.ASTNode{
+				protocol.ASTBulkString{Val: "subscribe"},
+				protocol.ASTBulkString{Val: "mychan"},
+				protocol.ASTNumber{Val: 1},
+			}},
+		},
+		{
+			input: protocol.BuildPrimitiveRESPArray([]string{"subscribe", "mychan2"}),
+			output: protocol.ASTArray{Values: []protocol.ASTNode{
+				protocol.ASTBulkString{Val: "subscribe"},
+				protocol.ASTBulkString{Val: "mychan2"},
+				protocol.ASTNumber{Val: 2},
+			}},
+		},
 		{
 			input:  protocol.BuildPrimitiveRESPArray([]string{"echo", "abc"}),
-			output: protocol.ASTSimpleError{ErrType: "ERR", Msg: "- ERR Can't execute 'echo': only (P|S)SUBSCRIBE / (P|S)UNSUBSCRIBE / PING / QUIT / RESET are allowed in this context"},
+			output: protocol.ASTSimpleError{ErrType: "ERR", Msg: "Can't execute 'echo': only (P|S)SUBSCRIBE / (P|S)UNSUBSCRIBE / PING / QUIT / RESET are allowed in this context"},
+		},
+		{
+			input: protocol.BuildPrimitiveRESPArray([]string{"ping"}),
+			output: protocol.ASTArray{Values: []protocol.ASTNode{
+				protocol.ASTBulkString{Val: "pong"},
+				protocol.ASTBulkString{Val: ""},
+			}},
+		},
+	}
+
+	testCaesesTwo := []SimpleASTTestCase{
+		{
+			input: protocol.BuildPrimitiveRESPArray([]string{"subscribe", "mychan"}),
+			output: protocol.ASTArray{Values: []protocol.ASTNode{
+				protocol.ASTBulkString{Val: "subscribe"},
+				protocol.ASTBulkString{Val: "mychan"},
+				protocol.ASTNumber{Val: 1},
+			}},
+		},
+		{
+			input: protocol.BuildPrimitiveRESPArray([]string{"unsubscribe", "mychan"}),
+			output: protocol.ASTArray{Values: []protocol.ASTNode{
+				protocol.ASTBulkString{Val: "unsubscribe"},
+				protocol.ASTBulkString{Val: "mychan"},
+				protocol.ASTNumber{Val: 0},
+			}},
+		},
+	}
+
+	testCaesesPublisher := []SimpleASTTestCase{
+		{
+			input:  protocol.BuildPrimitiveRESPArray([]string{"publish", "mychan", "channel msg"}),
+			output: protocol.ASTNumber{Val: 2},
 		},
 	}
 
 	for _, testCase := range testCaeses {
-		testCase.runTest(conn, t)
+		testCase.runTest(subscriberConnOne, t)
 	}
 
-	// for _, testCase := range testCaeses {
-	// 	testCase.runTest(anotherConn, t)
-	// }
+	for _, testCase := range testCaeses {
+		testCase.runTest(SubscirberConnTwo, t)
+	}
 
-	cleanup(server, conn, anotherConn)
+	for _, testCase := range testCaesesTwo {
+		testCase.runTest(SubscirberConnThree, t)
+	}
+
+	for _, testCase := range testCaesesPublisher {
+		testCase.runTest(publisherConn, t)
+	}
+
+	expectedChannelMsg := protocol.ASTArray{Values: []protocol.ASTNode{
+		protocol.ASTBulkString{Val: "message"},
+		protocol.ASTBulkString{Val: "mychan"},
+		protocol.ASTBulkString{Val: "channel msg"},
+	}}
+
+	channelMsgForSubOne := readSingleLineResponse(subscriberConnOne, t)
+	channelMsgForSubTwo := readSingleLineResponse(SubscirberConnTwo, t)
+	if !reflect.DeepEqual(channelMsgForSubOne, expectedChannelMsg) {
+		t.Errorf("expected to get channel msg: %+q for first subscriber got: %+q", expectedChannelMsg, channelMsgForSubOne)
+	}
+
+	if !reflect.DeepEqual(channelMsgForSubTwo, expectedChannelMsg) {
+		t.Errorf("expected to get channel msg: %+q for first subscriber got: %+q", expectedChannelMsg, channelMsgForSubTwo)
+	}
+	subscriberThreeMsg := readRawResp(SubscirberConnThree, 50)
+	if subscriberThreeMsg != nil {
+		t.Errorf("Expected subscriber three to not get any message, got: %v", subscriberThreeMsg)
+	}
+
+	cleanup(server, subscriberConnOne, SubscirberConnTwo, SubscirberConnThree, publisherConn)
 }

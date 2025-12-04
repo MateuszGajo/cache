@@ -29,7 +29,9 @@ const (
 	LPOP         CommandType = "LPOP"
 	BLPOP        CommandType = "BLPOP"
 	SUBSCRIBE    CommandType = "SUBSCRIBE"
+	PUBLISH      CommandType = "PUBLISH"
 	UNSUBSCRIBE  CommandType = "UNSUBSCRIBE"
+	ACL          CommandType = "ACL"
 	PSUBSCRIBE   CommandType = "PSUBSCRIBE"
 	PUNSUBSCRIBE CommandType = "PUNSUBSCRIBE"
 	QUIT         CommandType = "QUIT"
@@ -97,8 +99,13 @@ connectionLoop:
 			}
 
 			command := CommandType(strings.ToUpper(args[0]))
+			args = args[1:]
+			if commandWithSubType[command] {
+				command = command + CommandType(args[0])
+				args = args[1:]
+			}
 
-			data, err := executeCommand(command, args[1:], protocolInstance)
+			data, err := executeCommand(command, args, protocolInstance)
 
 			if err != nil {
 				log.Fatal(err)
@@ -125,18 +132,22 @@ connectionLoop:
 	}
 }
 
+var commandWithSubType = map[CommandType]bool{ACL: true}
+
 var commandRegistry = map[CommandType]Command{
-	PING:      &PingCommand{},
-	ECHO:      &EchoCommand{},
-	SET:       &SetCommand{},
-	GET:       &GetCommand{},
-	RPUSH:     &RpushCommand{},
-	LRANGE:    &LrangeCommand{},
-	LPUSH:     &LpushCommand{},
-	LLEN:      &LlenCommand{},
-	LPOP:      &LpopCommand{},
-	BLPOP:     &BlpopCommand{},
-	SUBSCRIBE: &SubscribeCommand{},
+	PING:        &PingCommand{},
+	ECHO:        &EchoCommand{},
+	SET:         &SetCommand{},
+	GET:         &GetCommand{},
+	RPUSH:       &RpushCommand{},
+	LRANGE:      &LrangeCommand{},
+	LPUSH:       &LpushCommand{},
+	LLEN:        &LlenCommand{},
+	LPOP:        &LpopCommand{},
+	BLPOP:       &BlpopCommand{},
+	SUBSCRIBE:   &SubscribeCommand{},
+	UNSUBSCRIBE: &UnSubscribeCommand{},
+	PUBLISH:     &PublishCommand{},
 }
 
 var subscribeModeAllowedCommand = []CommandType{SUBSCRIBE, UNSUBSCRIBE, PSUBSCRIBE, PUNSUBSCRIBE, QUIT, PING}
@@ -156,7 +167,7 @@ func executeCommand(commandType CommandType, args []string, protocolInstance *pr
 		if !isCommandAllowedInSubscribeMode(commandType) {
 			return singleResp(protocol.SimpleError{
 				ErrorType: "ERR",
-				ErrorMsg:  fmt.Sprintf("Cant execute '%v': only (P|S)SUBSCRIBE / (P|S)UNSUBSCRIBE / PING / QUIT / RESET are allowed in this context ", strings.ToLower(string(commandType))),
+				ErrorMsg:  fmt.Sprintf("Can't execute '%v': only (P|S)SUBSCRIBE / (P|S)UNSUBSCRIBE / PING / QUIT / RESET are allowed in this context ", strings.ToLower(string(commandType))),
 			}), nil
 		}
 	}

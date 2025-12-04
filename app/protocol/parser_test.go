@@ -202,14 +202,10 @@ func TestParseTokenizeSimpleError(t *testing.T) {
 			input: BuildSimpleErrorWithErrType("TYPE", "Error") + BuildSimpleError("Another one"),
 			expectedTokens: []Token{
 				{tokenType: hyphenToken, rawVal: "-"},
-				{tokenType: literalToken, val: "TYPE", rawVal: "TYPE"},
-				{tokenType: spaceToken, rawVal: " "},
-				{tokenType: literalToken, val: "Error", rawVal: "Error"},
+				{tokenType: literalToken, val: "TYPE Error", rawVal: "TYPE Error"},
 				{tokenType: CLRFToken, rawVal: "\r\n"},
 				{tokenType: hyphenToken, rawVal: "-"},
-				{tokenType: literalToken, val: "Another", rawVal: "Another"},
-				{tokenType: spaceToken, rawVal: " "},
-				{tokenType: literalToken, val: "one", rawVal: "one"},
+				{tokenType: literalToken, val: "Another one", rawVal: "Another one"},
 				{tokenType: CLRFToken, rawVal: "\r\n"},
 			},
 		},
@@ -244,31 +240,31 @@ func TestParser(t *testing.T) {
 		{
 			input: BuildRespInt(5),
 			expectedResult: ParseResult{
-				records: []ParseResultRecord{{astNode: ASTNumber{val: 5}, rawInput: ":5\r\n"}},
+				records: []ParseResultRecord{{AstNode: ASTNumber{Val: 5}, RawInput: ":5\r\n"}},
 			},
 		},
 		{
 			input: BuildSimpleString("simple"),
 			expectedResult: ParseResult{
-				records: []ParseResultRecord{{astNode: ASTSimpleString{val: "simple"}, rawInput: "+simple\r\n"}},
+				records: []ParseResultRecord{{AstNode: ASTSimpleString{Val: "simple"}, RawInput: "+simple\r\n"}},
 			},
 		},
 		{
 			input: BuildSimpleError("simple"),
 			expectedResult: ParseResult{
-				records: []ParseResultRecord{{astNode: ASTSimpleError{msg: "simple", errType: ""}, rawInput: "-simple\r\n"}},
+				records: []ParseResultRecord{{AstNode: ASTSimpleError{Msg: "simple", ErrType: ""}, RawInput: "-simple\r\n"}},
 			},
 		},
 		{
 			input: BuildSimpleErrorWithErrType("ERRTYPE", "wrong number"),
 			expectedResult: ParseResult{
-				records: []ParseResultRecord{{astNode: ASTSimpleError{msg: "wrong number", errType: "ERRTYPE"}, rawInput: "-ERRTYPE wrong number\r\n"}},
+				records: []ParseResultRecord{{AstNode: ASTSimpleError{Msg: "wrong number", ErrType: "ERRTYPE"}, RawInput: "-ERRTYPE wrong number\r\n"}},
 			},
 		},
 		{
 			input: BuildBulkString("bulk string"),
 			expectedResult: ParseResult{
-				records: []ParseResultRecord{{astNode: ASTBulkString{val: "bulk string"}, rawInput: "$11\r\nbulk string\r\n"}},
+				records: []ParseResultRecord{{AstNode: ASTBulkString{Val: "bulk string"}, RawInput: "$11\r\nbulk string\r\n"}},
 			},
 		},
 
@@ -277,10 +273,10 @@ func TestParser(t *testing.T) {
 			expectedResult: ParseResult{
 				records: []ParseResultRecord{
 					{
-						astNode: ASTArray{values: []ASTNode{
-							ASTBulkString{val: "bulk string"},
+						AstNode: ASTArray{Values: []ASTNode{
+							ASTBulkString{Val: "bulk string"},
 						}},
-						rawInput: "*1\r\n$11\r\nbulk string\r\n",
+						RawInput: "*1\r\n$11\r\nbulk string\r\n",
 					},
 				},
 			},
@@ -289,10 +285,10 @@ func TestParser(t *testing.T) {
 			input: BuildRESPArray([]string{BuildBulkString("bulk string"), BuildSimpleString("OK")}),
 			expectedResult: ParseResult{
 				records: []ParseResultRecord{{
-					astNode: ASTArray{values: []ASTNode{
-						ASTBulkString{val: "bulk string"}, ASTSimpleString{val: "OK"},
+					AstNode: ASTArray{Values: []ASTNode{
+						ASTBulkString{Val: "bulk string"}, ASTSimpleString{Val: "OK"},
 					}},
-					rawInput: "*2\r\n$11\r\nbulk string\r\n+OK\r\n",
+					RawInput: "*2\r\n$11\r\nbulk string\r\n+OK\r\n",
 				},
 				},
 			},
@@ -302,15 +298,15 @@ func TestParser(t *testing.T) {
 			expectedResult: ParseResult{
 				records: []ParseResultRecord{
 					{
-						astNode: ASTArray{values: []ASTNode{
-							ASTBulkString{val: "bulk string"},
-							ASTSimpleString{val: "OK"},
-							ASTArray{values: []ASTNode{
-								ASTSimpleError{errType: "ERRTYPE", msg: "message"}},
+						AstNode: ASTArray{Values: []ASTNode{
+							ASTBulkString{Val: "bulk string"},
+							ASTSimpleString{Val: "OK"},
+							ASTArray{Values: []ASTNode{
+								ASTSimpleError{ErrType: "ERRTYPE", Msg: "message"}},
 							},
 						},
 						},
-						rawInput: "*3\r\n$11\r\nbulk string\r\n+OK\r\n*1\r\n-ERRTYPE message\r\n",
+						RawInput: "*3\r\n$11\r\nbulk string\r\n+OK\r\n*1\r\n-ERRTYPE message\r\n",
 					},
 				},
 			},
@@ -320,18 +316,18 @@ func TestParser(t *testing.T) {
 			expectedResult: ParseResult{
 				records: []ParseResultRecord{
 					{
-						astNode: ASTArray{values: []ASTNode{
-							ASTBulkString{val: "bulk string"},
-							ASTArray{values: []ASTNode{
-								ASTSimpleError{errType: "ERRTYPE", msg: "message"}},
+						AstNode: ASTArray{Values: []ASTNode{
+							ASTBulkString{Val: "bulk string"},
+							ASTArray{Values: []ASTNode{
+								ASTSimpleError{ErrType: "ERRTYPE", Msg: "message"}},
 							},
 						},
 						},
-						rawInput: "*2\r\n$11\r\nbulk string\r\n*1\r\n-ERRTYPE message\r\n",
+						RawInput: "*2\r\n$11\r\nbulk string\r\n*1\r\n-ERRTYPE message\r\n",
 					},
 					{
-						astNode:  ASTBulkString{val: "bulk string 2"},
-						rawInput: "$13\r\nbulk string 2\r\n",
+						AstNode:  ASTBulkString{Val: "bulk string 2"},
+						RawInput: "$13\r\nbulk string 2\r\n",
 					},
 				},
 			},

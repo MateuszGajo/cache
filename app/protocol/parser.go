@@ -9,8 +9,8 @@ import (
 type TokenType string
 
 const (
-	numberToken  TokenType = "numberToken"
-	spaceToken   TokenType = "spaceToken"
+	numberToken TokenType = "numberToken"
+	// spaceToken   TokenType = "spaceToken"
 	eofToken     TokenType = "eofToken"
 	plusToken    TokenType = "plusToken"
 	dollarToken  TokenType = "dolarToken"
@@ -138,8 +138,8 @@ func (l *Lexar) readLiteralString() string {
 	char := l.peek()
 	output := ""
 
-	for isAlphaNumerical(char) || char == '-' || char == '*' || char == '+' || char == '_' || char == '.' ||
-		char == 'a' || char == '|' || char == '(' || char == '/' {
+	for isAlphaNumerical(char) || char == ' ' || char == '-' || char == '*' || char == '+' || char == '_' || char == '.' ||
+		char == '\'' || char == '|' || char == '(' || char == ')' || char == '/' || char == ':' {
 		output += string(char)
 		char = l.next()
 	}
@@ -224,9 +224,9 @@ func (l *Lexar) parseRespData() ([]Token, error) {
 	switch char {
 	case ':':
 		currTokens, err = l.parseNumberPattern()
-	case ' ':
-		currTokens = []Token{{tokenType: spaceToken, rawVal: " "}}
-		l.next()
+	// case ' ':
+	// 	currTokens = []Token{{tokenType: spaceToken, rawVal: " "}}
+	// 	l.next()
 	case '+':
 		currTokens = []Token{{tokenType: plusToken, rawVal: "+"}}
 		l.next()
@@ -455,23 +455,17 @@ func (p *Parser) parseSimpleString() (ASTNode, *ParseError) {
 }
 
 func (p *Parser) parseSimpleError() (ASTNode, *ParseError) {
-	literals := []string{}
 
-	for {
-		token := p.next()
-		err := p.expect(literalToken)
-		if err != nil {
-			return nil, err
-		}
-		literals = append(literals, token.val.(string))
-		token = p.next()
-
-		if token.tokenType != spaceToken {
-			break
-		}
+	token := p.next()
+	err := p.expect(literalToken)
+	if err != nil {
+		return nil, err
 	}
+	p.next()
 
-	err := p.expect(CLRFToken)
+	literals := strings.Split(token.val.(string), " ")
+
+	err = p.expect(CLRFToken)
 	if err != nil {
 		return nil, err
 	}
@@ -480,6 +474,9 @@ func (p *Parser) parseSimpleError() (ASTNode, *ParseError) {
 	if isWordUpperCase(literals[0]) {
 		errorType = literals[0]
 		literals = literals[1:]
+	}
+	if literals[len(literals)-1] == "" {
+		literals = literals[:len(literals)-1]
 	}
 
 	return ASTSimpleError{ErrType: errorType, Msg: strings.Join(literals, " ")}, nil
@@ -509,21 +506,14 @@ func (p *Parser) parseBulkString() (ASTNode, *ParseError) {
 		return ASTBulkString{Val: ""}, nil
 	}
 
-	data := ""
-	for {
-		token := p.next()
-		err := p.expect(literalToken)
-		if err != nil {
-			return nil, err
-		}
-		data += token.val.(string)
-
-		token = p.next()
-		if token.tokenType != spaceToken {
-			break
-		}
-		data += token.rawVal
+	token := p.next()
+	err = p.expect(literalToken)
+	if err != nil {
+		return nil, err
 	}
+	data := token.val.(string)
+
+	token = p.next()
 
 	if len(data) != lengthToken.val.(int) {
 		return nil, NewInvalidDataError(fmt.Sprintf("ParseBulkString error, length mismatch declared: %v got: %v bytes", len(data), lengthToken.val))

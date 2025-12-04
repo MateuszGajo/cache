@@ -47,9 +47,6 @@ func BuildSimpleString(message string) string {
 }
 
 func BuildBulkString(message string) string {
-	if message == "" {
-		return BuildNullBulkString()
-	}
 	return fmt.Sprintf("$%v%v%s%v", len(message), CLRF, message, CLRF)
 }
 

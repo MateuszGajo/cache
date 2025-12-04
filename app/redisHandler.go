@@ -49,6 +49,12 @@ func (pingCommand *PingCommand) Parse(args []string) error {
 }
 
 func (pingCommand PingCommand) Handle(ctx CommandContext) ([]protocol.RESPValue, error) {
+	if ctx.protocol.SubscribeCount > 0 {
+		return singleResp(protocol.Array{Values: []protocol.RESPValue{
+			protocol.BulkString{Value: "pong"},
+			protocol.BulkString{Value: ""},
+		}}), nil
+	}
 	// connectionFromMaster := strings.Contains(conn.RemoteAddr().String(), "6379")
 	// if !connectionFromMaster {
 	// _, err = conn.Write([]byte(BuildSimpleString("PONG")))
@@ -471,6 +477,65 @@ func (subscribeCommand *SubscribeCommand) Handle(ctx CommandContext) ([]protocol
 	}
 
 	return resp, nil
+}
+
+type PublishCommand struct {
+	channelName string
+	message     string
+}
+
+func (publishCommand *PublishCommand) Parse(args []string) error {
+	if len(args) != 2 {
+		return fmt.Errorf("expected two arguments: channel message")
+	}
+
+	publishCommand.channelName = args[0]
+	publishCommand.message = args[1]
+
+	return nil
+}
+
+func (publishCommand *PublishCommand) Handle(ctx CommandContext) ([]protocol.RESPValue, error) {
+	count := SubscriberInstance.publish(publishCommand.channelName, publishCommand.message)
+
+	return singleResp(protocol.RESPInteger{Value: count}), nil
+}
+
+type UnSubscribeCommand struct {
+	channelNames []string
+}
+
+func (unsubscribeCommand *UnSubscribeCommand) Parse(args []string) error {
+	if len(args) < 1 {
+		return fmt.Errorf("expected at least one argument: channel [chanel ...]")
+	}
+
+	unsubscribeCommand.channelNames = make([]string, len(args))
+
+	copy(unsubscribeCommand.channelNames, args)
+
+	return nil
+}
+
+func (unsubscribeCommand UnSubscribeCommand) Handle(ctx CommandContext) ([]protocol.RESPValue, error) {
+	subCount := SubscriberInstance.Unsubscribe(unsubscribeCommand.channelNames, ctx.protocol.GetClientId())
+
+	resp := []protocol.RESPValue{}
+	for i := 0; i < len(subCount); i++ {
+		resp = append(resp, protocol.Array{Values: []protocol.RESPValue{
+			protocol.BulkString{Value: "unsubscribe"},
+			protocol.BulkString{Value: subCount[i].channelName},
+			protocol.RESPInteger{Value: subCount[i].count},
+		}})
+	}
+
+	return resp, nil
+}
+
+type AclWhoami struct{}
+
+func (aclWhoami AclWhoami) Parse(args []string) error {
+	return nil
 }
 
 // type ReplConfCommand string
