@@ -32,6 +32,7 @@ const (
 	PUBLISH      CommandType = "PUBLISH"
 	UNSUBSCRIBE  CommandType = "UNSUBSCRIBE"
 	ACL          CommandType = "ACL"
+	ACLWHOAMI    CommandType = "ACL_WHOAMI"
 	PSUBSCRIBE   CommandType = "PSUBSCRIBE"
 	PUNSUBSCRIBE CommandType = "PUNSUBSCRIBE"
 	QUIT         CommandType = "QUIT"
@@ -64,7 +65,13 @@ func handleConenction(conn MyConn, server *Server) {
 		conn.Close()
 	}(conn)
 
+	user := server.aclManager.Authenticate("", "")
+
 	protocolInstance := protocol.NewProtocol(conn)
+	ctx := CommandContext{
+		protocol: protocolInstance,
+		user:     user,
+	}
 connectionLoop:
 	for {
 		respParsed, err := protocolInstance.ReadInput()
@@ -101,11 +108,11 @@ connectionLoop:
 			command := CommandType(strings.ToUpper(args[0]))
 			args = args[1:]
 			if commandWithSubType[command] {
-				command = command + CommandType(args[0])
+				command = command + "_" + CommandType(strings.ToUpper(args[0]))
 				args = args[1:]
 			}
 
-			data, err := executeCommand(command, args, protocolInstance)
+			data, err := executeCommand(command, args, ctx)
 
 			if err != nil {
 				log.Fatal(err)
@@ -148,6 +155,7 @@ var commandRegistry = map[CommandType]Command{
 	SUBSCRIBE:   &SubscribeCommand{},
 	UNSUBSCRIBE: &UnSubscribeCommand{},
 	PUBLISH:     &PublishCommand{},
+	ACLWHOAMI:   &AclWhoamiCommand{},
 }
 
 var subscribeModeAllowedCommand = []CommandType{SUBSCRIBE, UNSUBSCRIBE, PSUBSCRIBE, PUNSUBSCRIBE, QUIT, PING}
@@ -161,9 +169,9 @@ func isCommandAllowedInSubscribeMode(commandType CommandType) bool {
 	return false
 }
 
-func executeCommand(commandType CommandType, args []string, protocolInstance *protocol.Protocol) ([]protocol.RESPValue, error) {
+func executeCommand(commandType CommandType, args []string, ctx CommandContext) ([]protocol.RESPValue, error) {
 
-	if protocolInstance.SubscribeCount > 0 {
+	if ctx.protocol.SubscribeCount > 0 {
 		if !isCommandAllowedInSubscribeMode(commandType) {
 			return singleResp(protocol.SimpleError{
 				ErrorType: "ERR",
@@ -181,9 +189,7 @@ func executeCommand(commandType CommandType, args []string, protocolInstance *pr
 		return nil, fmt.Errorf("validate failed for command: %v, err: %v", commandType, err)
 	}
 
-	data, err := command.Handle(CommandContext{
-		protocol: protocolInstance,
-	})
+	data, err := command.Handle(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("Handle failed for command: %v, err: %v", commandType, err)
 	}

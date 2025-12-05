@@ -28,6 +28,7 @@ type Server struct {
 	masterConfig  MasterServerConfig
 	replicaConfig ReplicaServerConfig
 	dbConfig      DatabaseConfig
+	aclManager    *ACLManager
 }
 
 type DatabaseConfig struct {
@@ -94,6 +95,7 @@ func NewServer(options ...ServerOptions) *Server {
 		masterConfig: MasterServerConfig{
 			replicaConnections: make(map[string]*ReplicaConn),
 		},
+		aclManager:    NewAclManager(),
 		replicaConfig: ReplicaServerConfig{},
 		dbConfig:      DatabaseConfig{},
 	}

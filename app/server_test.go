@@ -782,3 +782,21 @@ func TestSubscribe(t *testing.T) {
 
 	cleanup(server, subscriberConnOne, SubscirberConnTwo, SubscirberConnThree, publisherConn)
 }
+
+func TestAclWhoami(t *testing.T) {
+	server := startServer()
+	conn := connectToServer(server.port)
+	testCaeses := []SimpleASTTestCase{
+		{
+			input:  protocol.BuildPrimitiveRESPArray([]string{"acl", "whoami"}),
+			output: protocol.ASTBulkString{Val: "default"},
+		},
+	}
+
+	for _, testCase := range testCaeses {
+		testCase.runTest(conn, t)
+	}
+
+	cleanup(server, conn)
+
+}

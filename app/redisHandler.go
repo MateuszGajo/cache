@@ -25,6 +25,7 @@ func stringsToBulkStrings(data []string) []protocol.RESPValue {
 
 type CommandContext struct {
 	protocol *protocol.Protocol
+	user     *ACLUser
 }
 
 type Command interface {
@@ -532,10 +533,14 @@ func (unsubscribeCommand UnSubscribeCommand) Handle(ctx CommandContext) ([]proto
 	return resp, nil
 }
 
-type AclWhoami struct{}
+type AclWhoamiCommand struct{}
 
-func (aclWhoami AclWhoami) Parse(args []string) error {
+func (aclWhoamiCommand *AclWhoamiCommand) Parse(args []string) error {
 	return nil
+}
+
+func (aclWhoamiCommand AclWhoamiCommand) Handle(ctx CommandContext) ([]protocol.RESPValue, error) {
+	return singleResp(protocol.BulkString{Value: ctx.user.Username}), nil
 }
 
 // type ReplConfCommand string
