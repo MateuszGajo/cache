@@ -798,5 +798,29 @@ func TestAclWhoami(t *testing.T) {
 	}
 
 	cleanup(server, conn)
+}
 
+func TestAclGetUser(t *testing.T) {
+	server := startServer()
+	conn := connectToServer(server.port)
+	testCaeses := []SimpleASTTestCase{
+		{
+			input:  protocol.BuildPrimitiveRESPArray([]string{"acl", "getuser", "nonexsistinguser"}),
+			output: protocol.ASTBulkString{Val: ""}},
+		{
+			input: protocol.BuildPrimitiveRESPArray([]string{"acl", "getuser", "default"}),
+			output: protocol.ASTArray{Values: []protocol.ASTNode{
+				protocol.ASTBulkString{Val: "flags"},
+				protocol.ASTArray{Values: []protocol.ASTNode{
+					protocol.ASTBulkString{Val: "nopass"},
+				}},
+			}},
+		},
+	}
+
+	for _, testCase := range testCaeses {
+		testCase.runTest(conn, t)
+	}
+
+	cleanup(server, conn)
 }

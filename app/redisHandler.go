@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/codecrafters-io/redis-starter-go/app/acl"
 	"github.com/codecrafters-io/redis-starter-go/app/protocol"
 )
 
@@ -24,8 +25,9 @@ func stringsToBulkStrings(data []string) []protocol.RESPValue {
 }
 
 type CommandContext struct {
-	protocol *protocol.Protocol
-	user     *ACLUser
+	protocol   *protocol.Protocol
+	user       *acl.ACLUser
+	aclManager *acl.ACLManager
 }
 
 type Command interface {
@@ -541,6 +543,39 @@ func (aclWhoamiCommand *AclWhoamiCommand) Parse(args []string) error {
 
 func (aclWhoamiCommand AclWhoamiCommand) Handle(ctx CommandContext) ([]protocol.RESPValue, error) {
 	return singleResp(protocol.BulkString{Value: ctx.user.Username}), nil
+}
+
+type AclGetUserCommand struct {
+	username string
+}
+
+func (aclGetUserCommand *AclGetUserCommand) Parse(args []string) error {
+	if len(args) != 1 {
+		return fmt.Errorf("Expected one argument: username")
+	}
+
+	aclGetUserCommand.username = args[0]
+
+	return nil
+}
+
+func (aclGetUserCommand AclGetUserCommand) Handle(ctx CommandContext) ([]protocol.RESPValue, error) {
+
+	userRules := ctx.aclManager.GetRules(aclGetUserCommand.username)
+	if userRules == nil {
+		return singleResp(protocol.BulkString{Null: true}), nil
+	}
+
+	resp := protocol.Array{Values: []protocol.RESPValue{}}
+	resp.Values = append(resp.Values, protocol.BulkString{Value: "flags"})
+	flags := protocol.Array{Values: []protocol.RESPValue{}}
+	for _, flag := range userRules.Flags {
+		flags.Values = append(flags.Values, protocol.BulkString{Value: string(flag)})
+	}
+
+	resp.Values = append(resp.Values, flags)
+
+	return singleResp(resp), nil
 }
 
 // type ReplConfCommand string

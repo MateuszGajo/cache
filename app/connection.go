@@ -33,6 +33,7 @@ const (
 	UNSUBSCRIBE  CommandType = "UNSUBSCRIBE"
 	ACL          CommandType = "ACL"
 	ACLWHOAMI    CommandType = "ACL_WHOAMI"
+	ACLGETUSER   CommandType = "ACL_GETUSER"
 	PSUBSCRIBE   CommandType = "PSUBSCRIBE"
 	PUNSUBSCRIBE CommandType = "PUNSUBSCRIBE"
 	QUIT         CommandType = "QUIT"
@@ -69,8 +70,9 @@ func handleConenction(conn MyConn, server *Server) {
 
 	protocolInstance := protocol.NewProtocol(conn)
 	ctx := CommandContext{
-		protocol: protocolInstance,
-		user:     user,
+		protocol:   protocolInstance,
+		user:       user,
+		aclManager: server.aclManager,
 	}
 connectionLoop:
 	for {
@@ -156,6 +158,7 @@ var commandRegistry = map[CommandType]Command{
 	UNSUBSCRIBE: &UnSubscribeCommand{},
 	PUBLISH:     &PublishCommand{},
 	ACLWHOAMI:   &AclWhoamiCommand{},
+	ACLGETUSER:  &AclGetUserCommand{},
 }
 
 var subscribeModeAllowedCommand = []CommandType{SUBSCRIBE, UNSUBSCRIBE, PSUBSCRIBE, PUNSUBSCRIBE, QUIT, PING}
