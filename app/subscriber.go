@@ -78,7 +78,7 @@ func (subscriber *Subscriber) publish(channelName string, message string) int {
 	channels := subscriber.channels[channelName]
 
 	for _, channel := range channels {
-		channel.protocol.Write([]protocol.RESPValue{protocol.Array{Values: []protocol.RESPValue{
+		channel.protocol.Write([]protocol.RESPValue{protocol.RespArray{Values: []protocol.RESPValue{
 			protocol.BulkString{Value: "message"},
 			protocol.BulkString{Value: channelName},
 			protocol.BulkString{Value: message},

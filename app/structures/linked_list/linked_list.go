@@ -1,9 +1,9 @@
-package main
+package linkedlist
 
 type LinkedList struct {
 	head *Node
 	tail *Node
-	size int
+	Size int
 }
 
 type Node struct {
@@ -12,9 +12,28 @@ type Node struct {
 	prev  *Node
 }
 
+type LinkedListMemory struct {
+	Lists map[string]*LinkedList
+}
+
+func NewLinkedListMemory() *LinkedListMemory {
+	return &LinkedListMemory{
+		Lists: make(map[string]*LinkedList, 50),
+	}
+}
+
 func NewNode(val string) *Node {
 	return &Node{
 		value: val,
+	}
+}
+func reverseStrings(arr []string) {
+	i := 0
+	j := len(arr) - 1
+	for i < j {
+		arr[i], arr[j] = arr[j], arr[i]
+		i++
+		j--
 	}
 }
 
@@ -25,7 +44,7 @@ func (list *LinkedList) LPush(val []string) int {
 		list.lpush(val[i])
 	}
 
-	return list.size
+	return list.Size
 }
 
 func (list *LinkedList) lpush(val string) {
@@ -38,7 +57,7 @@ func (list *LinkedList) lpush(val string) {
 		list.head.next = currentHead
 	}
 
-	list.size++
+	list.Size++
 }
 
 func (list *LinkedList) Lpop(count int) []string {
@@ -68,7 +87,7 @@ func (list *LinkedList) lpop() string {
 	if next != nil {
 		next.prev = nil
 	}
-	list.size--
+	list.Size--
 
 	return currentHead.value
 }
@@ -85,7 +104,7 @@ func (list *LinkedList) Rpush(val []string) int {
 		list.rpush(val[i])
 	}
 
-	return list.size
+	return list.Size
 }
 
 func (list *LinkedList) rpush(val string) int {
@@ -93,7 +112,7 @@ func (list *LinkedList) rpush(val string) int {
 	if list.head == nil {
 		list.head = node
 		list.tail = node
-		list.size = 1
+		list.Size = 1
 		return 1
 	}
 
@@ -109,22 +128,22 @@ func (list *LinkedList) rpush(val string) int {
 
 	current.next = node
 	list.tail = node
-	list.size = count
+	list.Size = count
 	return count
 }
 
-func (list *LinkedList) getRange(start int, end int) []string {
+func (list *LinkedList) GetRange(start int, end int) []string {
 	if start < 0 && end < 0 {
 		// more efficient lookup starting from tail
 		return list.getRangeNegativeLookup(start, end)
 	}
 
 	if start < 0 {
-		start = list.size + start
+		start = list.Size + start
 	}
 
 	if end < 0 {
-		end = list.size + end
+		end = list.Size + end
 	}
 
 	if start > end {
@@ -212,8 +231,10 @@ func (list *LinkedList) removeFromBack() *Node {
 	return node
 }
 
-func NewLinkesList() *LinkedList {
-	return &LinkedList{
+func (linkedListMemory LinkedListMemory) NewLinkesList(key string) *LinkedList {
+	list := LinkedList{
 		head: nil,
 	}
+	linkedListMemory.Lists[key] = &list
+	return &list
 }

@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/codecrafters-io/redis-starter-go/app/structures/avltree"
 )
 
-var streamListners map[string]chan StreamEntry = make(map[string]chan StreamEntry)
+var streamListners map[string]chan avltree.StreamEntry = make(map[string]chan avltree.StreamEntry)
 var StreamType = "stream"
 
 func VerifyStreamIntegrity(lastEntry string, newEntryId string) (bool, string) {

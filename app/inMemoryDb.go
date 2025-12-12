@@ -5,6 +5,8 @@ import (
 	"reflect"
 	"sync"
 	"time"
+
+	"github.com/codecrafters-io/redis-starter-go/app/structures/avltree"
 )
 
 type CustomSetStore struct {
@@ -89,14 +91,14 @@ func HandleGetString(key string) (string, InMemoryDbError) {
 	return stringValue, err
 }
 
-func HandleGetStream(key string) Stream {
+func HandleGetStream(key string) avltree.Stream {
 	res, err := handleGet(key)
 
 	if (err != nil || res == CustomSetStore{}) {
-		return Stream{}
+		return avltree.Stream{}
 	}
 
-	stringValue, ok := res.Value.(Stream)
+	stringValue, ok := res.Value.(avltree.Stream)
 
 	if !ok {
 		panic("Value isn't type of Stream")

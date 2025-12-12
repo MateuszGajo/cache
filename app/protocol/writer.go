@@ -51,12 +51,12 @@ func (b BulkString) encode() []byte {
 	return []byte(BuildBulkString(b.Value))
 }
 
-type Array struct {
+type RespArray struct {
 	Values []RESPValue
 	Null   bool
 }
 
-func (a Array) encode() []byte {
+func (a RespArray) encode() []byte {
 	if a.Null {
 		return []byte(BuildNullArray())
 	}

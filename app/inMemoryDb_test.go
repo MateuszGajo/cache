@@ -3,6 +3,8 @@ package main
 import (
 	"testing"
 	"time"
+
+	"github.com/codecrafters-io/redis-starter-go/app/structures/avltree"
 )
 
 func TestReadSetValue(t *testing.T) {
@@ -43,7 +45,7 @@ func TestExpiredValueShouldReturnEmpty(t *testing.T) {
 
 func TestExpiredValueShouldReturnEmpty1(t *testing.T) {
 	handleSet("abc", "123", 0, "string")
-	handleSet("def", Stream{}, 0, "stream")
+	handleSet("def", avltree.Stream{}, 0, "stream")
 
 	entryType := HandleGetType("abc")
 

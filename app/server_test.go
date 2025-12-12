@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/codecrafters-io/redis-starter-go/app/acl"
 	"github.com/codecrafters-io/redis-starter-go/app/protocol"
 )
 
@@ -76,7 +77,6 @@ func connectToServer(port string) net.Conn {
 
 func cleanup(server *Server, connections ...net.Conn) {
 	m = map[string]CustomSetStore{}
-	linkedList = map[string]*LinkedList{}
 	for _, conn := range connections {
 		conn.Close()
 	}
@@ -814,7 +814,62 @@ func TestAclGetUser(t *testing.T) {
 				protocol.ASTArray{Values: []protocol.ASTNode{
 					protocol.ASTBulkString{Val: "nopass"},
 				}},
+				protocol.ASTBulkString{Val: "passwords"},
+				protocol.ASTArray{Values: []protocol.ASTNode{}},
 			}},
+		},
+	}
+
+	for _, testCase := range testCaeses {
+		testCase.runTest(conn, t)
+	}
+
+	cleanup(server, conn)
+}
+
+func TestAclSetUser(t *testing.T) {
+	server := startServer()
+	conn := connectToServer(server.port)
+	testCaeses := []SimpleASTTestCase{
+		{
+			input:  protocol.BuildPrimitiveRESPArray([]string{"acl", "setuser", "default", ">password01"}),
+			output: protocol.ASTSimpleString{Val: "OK"}},
+		{
+			input: protocol.BuildPrimitiveRESPArray([]string{"acl", "getuser", "default"}),
+			output: protocol.ASTArray{Values: []protocol.ASTNode{
+				protocol.ASTBulkString{Val: "flags"},
+				protocol.ASTArray{Values: []protocol.ASTNode{}},
+				protocol.ASTBulkString{Val: "passwords"},
+				protocol.ASTArray{Values: []protocol.ASTNode{
+					protocol.ASTBulkString{Val: acl.HashPassword("password01")},
+				}},
+			}},
+		},
+	}
+
+	for _, testCase := range testCaeses {
+		testCase.runTest(conn, t)
+	}
+
+	cleanup(server, conn)
+}
+
+func TestAuth(t *testing.T) {
+	server := startServer()
+	conn := connectToServer(server.port)
+	setup := [][]byte{
+		[]byte(protocol.BuildPrimitiveRESPArray([]string{"acl", "setuser", "default", ">password01"})),
+	}
+	writeMany(conn, setup)
+	testCaeses := []SimpleASTTestCase{
+		{
+			input:  protocol.BuildPrimitiveRESPArray([]string{"auth", "default", "invalidPassword"}),
+			output: protocol.ASTSimpleError{ErrType: "WRONGPASS", Msg: "invalid username-password pair or user is disabled."},
+		},
+		{
+
+			input:  protocol.BuildPrimitiveRESPArray([]string{"auth", "default", "password01"}),
+			output: protocol.ASTSimpleString{Val: "OK"},
 		},
 	}
 

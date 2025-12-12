@@ -34,6 +34,8 @@ const (
 	ACL          CommandType = "ACL"
 	ACLWHOAMI    CommandType = "ACL_WHOAMI"
 	ACLGETUSER   CommandType = "ACL_GETUSER"
+	ACLSETUSER   CommandType = "ACL_SETUSER"
+	AUTH         CommandType = "AUTH"
 	PSUBSCRIBE   CommandType = "PSUBSCRIBE"
 	PUNSUBSCRIBE CommandType = "PUNSUBSCRIBE"
 	QUIT         CommandType = "QUIT"
@@ -66,13 +68,16 @@ func handleConenction(conn MyConn, server *Server) {
 		conn.Close()
 	}(conn)
 
-	user := server.aclManager.Authenticate("", "")
-
 	protocolInstance := protocol.NewProtocol(conn)
+	user, err := server.aclManager.Authenticate("", "")
+
+	fmt.Println(err)
+
 	ctx := CommandContext{
-		protocol:   protocolInstance,
-		user:       user,
-		aclManager: server.aclManager,
+		protocol:         protocolInstance,
+		user:             user,
+		aclManager:       server.aclManager,
+		linkedlistMemory: server.linkedlistMemory,
 	}
 connectionLoop:
 	for {
@@ -114,7 +119,7 @@ connectionLoop:
 				args = args[1:]
 			}
 
-			data, err := executeCommand(command, args, ctx)
+			data, err := executeCommand(command, args, &ctx)
 
 			if err != nil {
 				log.Fatal(err)
@@ -159,9 +164,21 @@ var commandRegistry = map[CommandType]Command{
 	PUBLISH:     &PublishCommand{},
 	ACLWHOAMI:   &AclWhoamiCommand{},
 	ACLGETUSER:  &AclGetUserCommand{},
+	ACLSETUSER:  &AclSetUserCommand{},
+	AUTH:        &AuthCommand{},
 }
 
 var subscribeModeAllowedCommand = []CommandType{SUBSCRIBE, UNSUBSCRIBE, PSUBSCRIBE, PUNSUBSCRIBE, QUIT, PING}
+var allowedCommandForNoUser = []CommandType{AUTH}
+
+func isCommandAllowerForNoUser(commandType CommandType) bool {
+	for _, allowedCommandType := range allowedCommandForNoUser {
+		if allowedCommandType == commandType {
+			return true
+		}
+	}
+	return false
+}
 
 func isCommandAllowedInSubscribeMode(commandType CommandType) bool {
 	for _, allowedCommandType := range subscribeModeAllowedCommand {
@@ -172,7 +189,11 @@ func isCommandAllowedInSubscribeMode(commandType CommandType) bool {
 	return false
 }
 
-func executeCommand(commandType CommandType, args []string, ctx CommandContext) ([]protocol.RESPValue, error) {
+func executeCommand(commandType CommandType, args []string, ctx *CommandContext) ([]protocol.RESPValue, error) {
+
+	if ctx.user == nil && !isCommandAllowerForNoUser(commandType) {
+		return []protocol.RESPValue{protocol.SimpleError{ErrorType: "NOAUTH", ErrorMsg: "Authentication required."}}, nil
+	}
 
 	if ctx.protocol.SubscribeCount > 0 {
 		if !isCommandAllowedInSubscribeMode(commandType) {

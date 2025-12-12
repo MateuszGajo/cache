@@ -2,12 +2,14 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
 
 	"github.com/codecrafters-io/redis-starter-go/app/acl"
 	"github.com/codecrafters-io/redis-starter-go/app/protocol"
+	linkedlist "github.com/codecrafters-io/redis-starter-go/app/structures/linked_list"
 )
 
 var EMPTY_RDB_FILE_BASE64 string = "UkVESVMwMDEx+glyZWRpcy12ZXIFNy4yLjD6CnJlZGlzLWJpdHPAQPoFY3RpbWXCbQi8ZfoIdXNlZC1tZW3CsMQQAPoIYW9mLWJhc2XAAP/wbjv+wP9aog=="
@@ -16,23 +18,32 @@ func singleResp(val protocol.RESPValue) []protocol.RESPValue {
 	return []protocol.RESPValue{val}
 }
 
-func stringsToBulkStrings(data []string) []protocol.RESPValue {
+func arrayToBulkStrings[T ~string](data []T) []protocol.RESPValue {
 	items := make([]protocol.RESPValue, 0, len(data))
 	for _, item := range data {
-		items = append(items, protocol.BulkString{Value: item})
+		items = append(items, protocol.BulkString{Value: string(item)})
 	}
 	return items
 }
 
+func arrayToBulkStringArray[T ~string](data []T) protocol.RespArray {
+	array := protocol.RespArray{Values: []protocol.RESPValue{}}
+	for _, item := range data {
+		array.Values = append(array.Values, protocol.BulkString{Value: string(item)})
+	}
+	return array
+}
+
 type CommandContext struct {
-	protocol   *protocol.Protocol
-	user       *acl.ACLUser
-	aclManager *acl.ACLManager
+	protocol         *protocol.Protocol
+	user             *acl.ACLUser
+	aclManager       *acl.ACLManager
+	linkedlistMemory *linkedlist.LinkedListMemory
 }
 
 type Command interface {
 	Parse(args []string) error
-	Handle(ctx CommandContext) ([]protocol.RESPValue, error)
+	Handle(ctx *CommandContext) ([]protocol.RESPValue, error)
 }
 
 type PingCommand struct {
@@ -51,9 +62,9 @@ func (pingCommand *PingCommand) Parse(args []string) error {
 	return nil
 }
 
-func (pingCommand PingCommand) Handle(ctx CommandContext) ([]protocol.RESPValue, error) {
+func (pingCommand PingCommand) Handle(ctx *CommandContext) ([]protocol.RESPValue, error) {
 	if ctx.protocol.SubscribeCount > 0 {
-		return singleResp(protocol.Array{Values: []protocol.RESPValue{
+		return singleResp(protocol.RespArray{Values: []protocol.RESPValue{
 			protocol.BulkString{Value: "pong"},
 			protocol.BulkString{Value: ""},
 		}}), nil
@@ -79,7 +90,7 @@ func (echo *EchoCommand) Parse(args []string) error {
 	return nil
 }
 
-func (echo EchoCommand) Handle(ctx CommandContext) ([]protocol.RESPValue, error) {
+func (echo EchoCommand) Handle(ctx *CommandContext) ([]protocol.RESPValue, error) {
 	return singleResp(protocol.BulkString{Value: echo.message}), nil
 }
 
@@ -144,7 +155,7 @@ func (setCommand *SetCommand) validatePxModifier(args []string) error {
 	return nil
 }
 
-func (setCommand SetCommand) Handle(ctx CommandContext) ([]protocol.RESPValue, error) {
+func (setCommand SetCommand) Handle(ctx *CommandContext) ([]protocol.RESPValue, error) {
 	expiryTime := 0
 
 	switch v := setCommand.modifier.(type) {
@@ -171,7 +182,7 @@ func (getCommand *GetCommand) Parse(args []string) error {
 	return nil
 }
 
-func (getCommand GetCommand) Handle(ctx CommandContext) ([]protocol.RESPValue, error) {
+func (getCommand GetCommand) Handle(ctx *CommandContext) ([]protocol.RESPValue, error) {
 	value, err := HandleGetString(getCommand.key)
 	if err != nil {
 		switch err.(type) {
@@ -205,12 +216,11 @@ func (rpush *RpushCommand) Parse(args []string) error {
 	return nil
 }
 
-func (rpushCommand RpushCommand) Handle(ctx CommandContext) ([]protocol.RESPValue, error) {
-	list, ok := linkedList[rpushCommand.key]
+func (rpushCommand RpushCommand) Handle(ctx *CommandContext) ([]protocol.RESPValue, error) {
+	list, ok := ctx.linkedlistMemory.Lists[rpushCommand.key]
 
 	if !ok {
-		list = NewLinkesList()
-		linkedList[rpushCommand.key] = list
+		list = ctx.linkedlistMemory.NewLinkesList(rpushCommand.key)
 	}
 
 	count := list.Rpush(rpushCommand.elements)
@@ -223,8 +233,6 @@ func (rpushCommand RpushCommand) Handle(ctx CommandContext) ([]protocol.RESPValu
 // 	_, err = conn.Write([]byte(result))
 // 	return err
 // }
-
-var linkedList = make(map[string]*LinkedList)
 
 type LrangeCommand struct {
 	key   string
@@ -255,16 +263,16 @@ func (lrangeCommand *LrangeCommand) Parse(args []string) error {
 	return nil
 }
 
-func (lrangeCommand LrangeCommand) Handle(ctx CommandContext) ([]protocol.RESPValue, error) {
+func (lrangeCommand LrangeCommand) Handle(ctx *CommandContext) ([]protocol.RESPValue, error) {
 
-	list := linkedList[lrangeCommand.key]
+	list := ctx.linkedlistMemory.Lists[lrangeCommand.key]
 	if list == nil {
-		return singleResp(protocol.Array{Values: []protocol.RESPValue{}}), nil
+		return singleResp(protocol.RespArray{Values: []protocol.RESPValue{}}), nil
 	}
 
-	result := list.getRange(lrangeCommand.start, lrangeCommand.stop)
+	result := list.GetRange(lrangeCommand.start, lrangeCommand.stop)
 
-	return singleResp(protocol.Array{Values: stringsToBulkStrings(result)}), nil
+	return singleResp(protocol.RespArray{Values: arrayToBulkStrings(result)}), nil
 }
 
 type LpushCommand struct {
@@ -286,12 +294,11 @@ func (lpushCommand *LpushCommand) Parse(args []string) error {
 	return nil
 }
 
-func (lpushCommand LpushCommand) Handle(ctx CommandContext) ([]protocol.RESPValue, error) {
-	list, ok := linkedList[lpushCommand.key]
+func (lpushCommand LpushCommand) Handle(ctx *CommandContext) ([]protocol.RESPValue, error) {
+	list, ok := ctx.linkedlistMemory.Lists[lpushCommand.key]
 
 	if !ok {
-		list = NewLinkesList()
-		linkedList[lpushCommand.key] = list
+		list = ctx.linkedlistMemory.NewLinkesList(lpushCommand.key)
 	}
 
 	result := list.LPush(lpushCommand.elements)
@@ -313,12 +320,12 @@ func (llenCommand *LlenCommand) Parse(args []string) error {
 	return nil
 }
 
-func (llenCommand *LlenCommand) Handle(ctx CommandContext) ([]protocol.RESPValue, error) {
+func (llenCommand *LlenCommand) Handle(ctx *CommandContext) ([]protocol.RESPValue, error) {
 
-	list := linkedList[llenCommand.key]
+	list := ctx.linkedlistMemory.Lists[llenCommand.key]
 	size := 0
 	if list != nil {
-		size = list.size
+		size = list.Size
 	}
 
 	return singleResp(protocol.RESPInteger{Value: size}), nil
@@ -353,7 +360,7 @@ func (blpopCommand *BlpopCommand) Parse(args []string) error {
 	return nil
 }
 
-func (blpopCommand *BlpopCommand) Handle(ctx CommandContext) ([]protocol.RESPValue, error) {
+func (blpopCommand *BlpopCommand) Handle(ctx *CommandContext) ([]protocol.RESPValue, error) {
 
 	var timeoutCtx context.Context
 	var cancel context.CancelFunc
@@ -377,14 +384,14 @@ func (blpopCommand *BlpopCommand) Handle(ctx CommandContext) ([]protocol.RESPVal
 			if len(data) != 0 {
 				return data, nil
 			}
-			return singleResp(protocol.Array{Null: true}), nil
+			return singleResp(protocol.RespArray{Null: true}), nil
 		case <-timer.C:
 			timer.Reset(20 * time.Millisecond)
 
 			for i := 0; i < len(keys); i++ {
-				el := lpop(keys[i], 1)
+				el := lpop(keys[i], 1, *ctx.linkedlistMemory)
 				if el != nil {
-					data = append(data, protocol.Array{Values: []protocol.RESPValue{protocol.BulkString{Value: keys[i]}, el}})
+					data = append(data, protocol.RespArray{Values: []protocol.RESPValue{protocol.BulkString{Value: keys[i]}, el}})
 					keys = append(keys[:i], keys[i+1:]...)
 					i--
 				}
@@ -421,8 +428,8 @@ func (lpopCommand *LpopCommand) Parse(args []string) error {
 	return nil
 }
 
-func (lpopCommand LpopCommand) Handle(ctx CommandContext) ([]protocol.RESPValue, error) {
-	data := lpop(lpopCommand.key, lpopCommand.count)
+func (lpopCommand LpopCommand) Handle(ctx *CommandContext) ([]protocol.RESPValue, error) {
+	data := lpop(lpopCommand.key, lpopCommand.count, *ctx.linkedlistMemory)
 
 	if data == nil {
 		return singleResp(protocol.BulkString{Null: true}), nil
@@ -431,8 +438,8 @@ func (lpopCommand LpopCommand) Handle(ctx CommandContext) ([]protocol.RESPValue,
 	return singleResp(data), nil
 }
 
-func lpop(key string, count int) protocol.RESPValue {
-	list := linkedList[key]
+func lpop(key string, count int, linkedlistMemory linkedlist.LinkedListMemory) protocol.RESPValue {
+	list := linkedlistMemory.Lists[key]
 	if list == nil {
 		return nil
 	}
@@ -447,7 +454,7 @@ func lpop(key string, count int) protocol.RESPValue {
 		return protocol.BulkString{Value: data[0]}
 	}
 
-	return protocol.Array{Values: stringsToBulkStrings(data)}
+	return protocol.RespArray{Values: arrayToBulkStrings(data)}
 }
 
 type SubscribeCommand struct {
@@ -467,12 +474,12 @@ func (subscribeCommand *SubscribeCommand) Parse(args []string) error {
 	return nil
 }
 
-func (subscribeCommand *SubscribeCommand) Handle(ctx CommandContext) ([]protocol.RESPValue, error) {
+func (subscribeCommand *SubscribeCommand) Handle(ctx *CommandContext) ([]protocol.RESPValue, error) {
 	subscribeResp := SubscriberInstance.Subscribe(subscribeCommand.channelNames, ctx.protocol)
 
 	resp := []protocol.RESPValue{}
 	for i := 0; i < len(subscribeResp); i++ {
-		resp = append(resp, protocol.Array{Values: []protocol.RESPValue{
+		resp = append(resp, protocol.RespArray{Values: []protocol.RESPValue{
 			protocol.BulkString{Value: "subscribe"},
 			protocol.BulkString{Value: subscribeResp[i].channelName},
 			protocol.RESPInteger{Value: subscribeResp[i].count},
@@ -498,7 +505,7 @@ func (publishCommand *PublishCommand) Parse(args []string) error {
 	return nil
 }
 
-func (publishCommand *PublishCommand) Handle(ctx CommandContext) ([]protocol.RESPValue, error) {
+func (publishCommand *PublishCommand) Handle(ctx *CommandContext) ([]protocol.RESPValue, error) {
 	count := SubscriberInstance.publish(publishCommand.channelName, publishCommand.message)
 
 	return singleResp(protocol.RESPInteger{Value: count}), nil
@@ -520,12 +527,12 @@ func (unsubscribeCommand *UnSubscribeCommand) Parse(args []string) error {
 	return nil
 }
 
-func (unsubscribeCommand UnSubscribeCommand) Handle(ctx CommandContext) ([]protocol.RESPValue, error) {
+func (unsubscribeCommand UnSubscribeCommand) Handle(ctx *CommandContext) ([]protocol.RESPValue, error) {
 	subCount := SubscriberInstance.Unsubscribe(unsubscribeCommand.channelNames, ctx.protocol.GetClientId())
 
 	resp := []protocol.RESPValue{}
 	for i := 0; i < len(subCount); i++ {
-		resp = append(resp, protocol.Array{Values: []protocol.RESPValue{
+		resp = append(resp, protocol.RespArray{Values: []protocol.RESPValue{
 			protocol.BulkString{Value: "unsubscribe"},
 			protocol.BulkString{Value: subCount[i].channelName},
 			protocol.RESPInteger{Value: subCount[i].count},
@@ -541,7 +548,7 @@ func (aclWhoamiCommand *AclWhoamiCommand) Parse(args []string) error {
 	return nil
 }
 
-func (aclWhoamiCommand AclWhoamiCommand) Handle(ctx CommandContext) ([]protocol.RESPValue, error) {
+func (aclWhoamiCommand AclWhoamiCommand) Handle(ctx *CommandContext) ([]protocol.RESPValue, error) {
 	return singleResp(protocol.BulkString{Value: ctx.user.Username}), nil
 }
 
@@ -559,23 +566,97 @@ func (aclGetUserCommand *AclGetUserCommand) Parse(args []string) error {
 	return nil
 }
 
-func (aclGetUserCommand AclGetUserCommand) Handle(ctx CommandContext) ([]protocol.RESPValue, error) {
+func (aclGetUserCommand AclGetUserCommand) Handle(ctx *CommandContext) ([]protocol.RESPValue, error) {
 
 	userRules := ctx.aclManager.GetRules(aclGetUserCommand.username)
 	if userRules == nil {
 		return singleResp(protocol.BulkString{Null: true}), nil
 	}
 
-	resp := protocol.Array{Values: []protocol.RESPValue{}}
-	resp.Values = append(resp.Values, protocol.BulkString{Value: "flags"})
-	flags := protocol.Array{Values: []protocol.RESPValue{}}
-	for _, flag := range userRules.Flags {
-		flags.Values = append(flags.Values, protocol.BulkString{Value: string(flag)})
-	}
+	resp := protocol.RespArray{Values: []protocol.RESPValue{}}
 
-	resp.Values = append(resp.Values, flags)
+	resp.Values = append(resp.Values, protocol.BulkString{Value: "flags"})
+	resp.Values = append(resp.Values, arrayToBulkStringArray(userRules.Flags))
+
+	resp.Values = append(resp.Values, protocol.BulkString{Value: "passwords"})
+	resp.Values = append(resp.Values, arrayToBulkStringArray(userRules.Passwords))
 
 	return singleResp(resp), nil
+}
+
+type AclSetUserRule interface{}
+
+type AclSetUserPasswordRule struct {
+	password string
+}
+
+type AclSetUserCommand struct {
+	username string
+	rule     AclSetUserRule
+}
+
+func (aclSetUserCommand *AclSetUserCommand) Parse(args []string) error {
+	if len(args) < 2 {
+		return fmt.Errorf("expected at least two arguments: uername [rule [rule ....]]")
+	}
+	aclSetUserCommand.username = args[0]
+
+	switch {
+	case args[1][0] == '>':
+		aclSetUserCommand.rule = AclSetUserPasswordRule{
+			password: args[1][1:],
+		}
+	default:
+		panic(fmt.Sprintf("not handled argument: %v", args[1]))
+	}
+
+	return nil
+}
+
+func (aclSetUserCommand AclSetUserCommand) Handle(ctx *CommandContext) ([]protocol.RESPValue, error) {
+
+	var resp protocol.RESPValue
+	switch v := aclSetUserCommand.rule.(type) {
+	case AclSetUserPasswordRule:
+		ctx.aclManager.SetPassword(aclSetUserCommand.username, v.password, acl.AclMangerContext{User: ctx.user})
+		resp = protocol.SimpleString{Value: "OK"}
+	default:
+		panic(fmt.Sprintf("should never enter here, val: %v", v))
+	}
+
+	return singleResp(resp), nil
+}
+
+type AuthCommand struct {
+	username string
+	password string
+}
+
+func (authCommand *AuthCommand) Parse(args []string) error {
+	if len(args) < 2 {
+		return fmt.Errorf("expected two argument: username password")
+	}
+
+	authCommand.username = args[0]
+	authCommand.password = args[1]
+
+	return nil
+}
+
+func (authCommand AuthCommand) Handle(ctx *CommandContext) ([]protocol.RESPValue, error) {
+	user, err := ctx.aclManager.Authenticate(authCommand.username, authCommand.password)
+
+	if err != nil {
+		errType := "Unknown error"
+		var invalidPwErr *acl.InvalidPassword
+		if errors.As(err, &invalidPwErr) {
+			errType = "WRONGPASS"
+		}
+		return singleResp(protocol.SimpleError{ErrorType: errType, ErrorMsg: err.Error()}), nil
+	}
+
+	ctx.user = user
+	return singleResp(protocol.SimpleString{Value: "OK"}), nil
 }
 
 // type ReplConfCommand string

@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/codecrafters-io/redis-starter-go/app/acl"
+	linkedlist "github.com/codecrafters-io/redis-starter-go/app/structures/linked_list"
 )
 
 type MyConn struct {
@@ -30,7 +31,10 @@ type Server struct {
 	masterConfig  MasterServerConfig
 	replicaConfig ReplicaServerConfig
 	dbConfig      DatabaseConfig
-	aclManager    *acl.ACLManager
+
+	aclManager *acl.ACLManager
+
+	linkedlistMemory *linkedlist.LinkedListMemory
 }
 
 type DatabaseConfig struct {
@@ -97,9 +101,10 @@ func NewServer(options ...ServerOptions) *Server {
 		masterConfig: MasterServerConfig{
 			replicaConnections: make(map[string]*ReplicaConn),
 		},
-		aclManager:    acl.NewAclManager(),
-		replicaConfig: ReplicaServerConfig{},
-		dbConfig:      DatabaseConfig{},
+		aclManager:       acl.NewAclManager(),
+		linkedlistMemory: linkedlist.NewLinkedListMemory(),
+		replicaConfig:    ReplicaServerConfig{},
+		dbConfig:         DatabaseConfig{},
 	}
 
 	for _, option := range options {
